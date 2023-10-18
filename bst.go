@@ -18,10 +18,15 @@ func (n *Node) IsLeaf() bool {
 
 func (n *Node) InOrderVisit() string {
 	if n != nil {
-		left := n.Left.InOrderVisit()
-		right := n.Right.InOrderVisit()
+		children := fmt.Sprintf("%s %s", n.Left.InOrderVisit(),
+			n.Right.InOrderVisit())
+		children = strings.Trim(children, " ")
 
-		return strings.Trim(fmt.Sprintf("%s %d %s", left, n.Key, right), " ")
+		if children == "" {
+			return fmt.Sprintf("%d", n.Key)
+		}
+
+		return fmt.Sprintf("%d {%s}", n.Key, children)
 	}
 
 	return ""
@@ -84,6 +89,28 @@ func (n *Node) Insert(k int) {
 	}
 }
 
+// node has only one child, to remove it
+// just move up the other child to its position
+func (n *Node) DropByChild(m *Node) {
+	if n == nil {
+		panic("node is nil")
+	}
+
+	if n.Parent != nil {
+		if n == n.Parent.Left {
+			n.Parent.Left = m
+		} else {
+			n.Parent.Right = m
+		}
+	}
+
+	if m != nil {
+		m.Parent = n.Parent
+	}
+}
+
+// use a successor node m from the tree to
+// replace node n position
 func (n *Node) Transplant(m *Node) {
 	if n == nil {
 		panic("node is nil")
@@ -99,6 +126,14 @@ func (n *Node) Transplant(m *Node) {
 
 	if m != nil {
 		m.Parent = n.Parent
+		m.Left = n.Left
+		m.Right = n.Right
+		if m.Left != nil {
+			m.Left.Parent = m
+		}
+		if m.Right != nil {
+			m.Right.Parent = m
+		}
 	}
 }
 
@@ -121,29 +156,30 @@ func (t *BST) Insert(k int) {
 	t.root.Insert(k)
 }
 
-func (t BST) Delete(k int) {
+func (t *BST) Delete(k int) {
 	n := t.root.Search(k)
 	if n == nil {
 		return
 	}
 
+	var succ *Node
+
 	if n.Right == nil {
-		n.Transplant(n.Left)
-		if n == t.root {
-			t.root = n.Left
-		}
+		n.DropByChild(n.Left)
+		succ = n.Left
 	} else if n.Left == nil {
-		n.Transplant(n.Right)
-		if n == t.root {
-			t.root = n.Right
-		}
+		n.DropByChild(n.Right)
+		succ = n.Right
 	} else {
-		succ := n.Successor()
-		succ.Transplant(succ.Right)
+		// left child of smallest successor node must be nil
+		// otherwise its left child is smaller
+		succ = n.Successor()
+		succ.DropByChild(succ.Right)
 		n.Transplant(succ)
-		succ.Left = n.Left
-		succ.Right = n.Right
-		succ.Left.Parent = succ
-		succ.Right.Parent = succ
 	}
+
+	if n == t.root {
+		t.root = succ
+	}
+
 }
