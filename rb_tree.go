@@ -176,3 +176,25 @@ func (n *RBNode) FixInsert() {
 		grandpa.RotateLeft()
 	}
 }
+
+type RBTree struct {
+	root *RBNode
+}
+
+func (t *RBTree) IsEmpty() bool { return t.root == nil }
+
+func (t *RBTree) Visit() string { return t.root.InOrderVisit() }
+
+func (t *RBTree) Search(k int) *RBNode { return t.root.Search(k) }
+
+func (t *RBTree) Insert(k int) {
+	if t.root == nil {
+		t.root = &RBNode{Key: k, Color: Black}
+		return
+	}
+
+	t.root.Insert(k)
+}
+
+func (t *RBTree) Delete(k int) {
+}
