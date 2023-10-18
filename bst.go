@@ -109,9 +109,9 @@ func (n *Node) DropByChild(m *Node) {
 	}
 }
 
-// use a successor node m from the tree to
+// use successor node m from the tree to
 // replace node n position
-func (n *Node) Transplant(m *Node) {
+func (n *Node) ReplaceBy(m *Node) {
 	if n == nil {
 		panic("node is nil")
 	}
@@ -175,11 +175,10 @@ func (t *BST) Delete(k int) {
 		// otherwise its left child is smaller
 		succ = n.Successor()
 		succ.DropByChild(succ.Right)
-		n.Transplant(succ)
+		n.ReplaceBy(succ)
 	}
 
 	if n == t.root {
 		t.root = succ
 	}
-
 }
