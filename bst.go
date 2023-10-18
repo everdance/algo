@@ -12,10 +12,6 @@ type Node struct {
 	Right  *Node
 }
 
-func (n *Node) IsLeaf() bool {
-	return n != nil && n.Left == nil && n.Right == nil
-}
-
 func (n *Node) InOrderVisit() string {
 	if n != nil {
 		children := fmt.Sprintf("%s %s", n.Left.InOrderVisit(),
@@ -90,22 +86,22 @@ func (n *Node) Insert(k int) {
 }
 
 // node has only one child, to remove it
-// just move up the other child to its position
-func (n *Node) DropByChild(m *Node) {
+// just move up the child to its position
+func (n *Node) DropByChild(child *Node) {
 	if n == nil {
 		panic("node is nil")
 	}
 
 	if n.Parent != nil {
 		if n == n.Parent.Left {
-			n.Parent.Left = m
+			n.Parent.Left = child
 		} else {
-			n.Parent.Right = m
+			n.Parent.Right = child
 		}
 	}
 
-	if m != nil {
-		m.Parent = n.Parent
+	if child != nil {
+		child.Parent = n.Parent
 	}
 }
 
