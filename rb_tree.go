@@ -50,7 +50,7 @@ func (n *RBNode) Search(k int) *RBNode {
 	return n
 }
 
-func (n *RBNode) Insert(k int) {
+func (n *RBNode) Insert(k int) *RBNode {
 	if n == nil {
 		panic("insert on nil node")
 	}
@@ -58,23 +58,23 @@ func (n *RBNode) Insert(k int) {
 	if k < n.Key {
 		if n.Left == nil {
 			n.Left = &RBNode{Key: k, Parent: n, Color: Red}
-			n.Left.FixInsert()
-		} else {
-			n.Left.Insert(k)
+			return n.Left
 		}
+		return n.Left.Insert(k)
 	}
 
 	if k > n.Key {
 		if n.Right == nil {
 			n.Right = &RBNode{Key: k, Parent: n, Color: Red}
-			n.Right.FixInsert()
-		} else {
-			n.Right.Insert(k)
+			return n.Right
 		}
+		return n.Right.Insert(k)
 	}
+
+	return n
 }
 
-func (n *RBNode) RotateRight() {
+func (n *RBNode) RotateRight(tree *RBTree) {
 	// left child must exists
 	child := n.Left
 	if child == nil {
@@ -97,11 +97,11 @@ func (n *RBNode) RotateRight() {
 			child.Parent.Right = child
 		}
 	} else {
-		// TODO: must reset root here if root is rotated
+		tree.root = child
 	}
 }
 
-func (n *RBNode) RotateLeft() {
+func (n *RBNode) RotateLeft(tree *RBTree) {
 	// right child must exists
 	child := n.Right
 	if child == nil {
@@ -124,17 +124,17 @@ func (n *RBNode) RotateLeft() {
 			child.Parent.Right = child
 		}
 	} else {
-		// TODO: must reset root here if root is rotated
+		tree.root = child
 	}
 }
 
-func (n *RBNode) FixInsert() {
+func FixInsert(tree *RBTree, n *RBNode) {
+	// n is root node or n's parent is black, then fix is done
 	if n.Parent == nil || n.Parent.Color == Black {
 		return
 	}
 
-	// both of n's parent and grandparent must exist and
-	// its grandpa color must be black
+	// grandparent must exist and its color must be black
 	grandpa := n.Parent.Parent
 	uncle := grandpa.Right
 	if n.Parent == grandpa.Right {
@@ -145,10 +145,10 @@ func (n *RBNode) FixInsert() {
 		grandpa.Color = Red
 		n.Color = Red
 		n.Parent.Color = Black
-		if uncle == grandpa.Right {
-			n.Parent.RotateRight()
+		if n.Parent == grandpa.Left {
+			grandpa.RotateRight(tree)
 		} else {
-			n.Parent.RotateLeft()
+			grandpa.RotateLeft(tree)
 		}
 		return
 	}
@@ -157,7 +157,7 @@ func (n *RBNode) FixInsert() {
 		uncle.Color = Black
 		n.Parent.Color = Black
 		grandpa.Color = Red
-		grandpa.FixInsert()
+		FixInsert(tree, grandpa)
 		return
 	}
 
@@ -166,14 +166,14 @@ func (n *RBNode) FixInsert() {
 
 	if uncle == grandpa.Right {
 		if n == n.Parent.Right {
-			n.Parent.RotateLeft()
+			n.Parent.RotateLeft(tree)
 		}
-		grandpa.RotateRight()
+		grandpa.RotateRight(tree)
 	} else {
 		if n == n.Parent.Left {
-			n.Parent.RotateRight()
+			n.Parent.RotateRight(tree)
 		}
-		grandpa.RotateLeft()
+		grandpa.RotateLeft(tree)
 	}
 }
 
@@ -193,7 +193,9 @@ func (t *RBTree) Insert(k int) {
 		return
 	}
 
-	t.root.Insert(k)
+	n := t.root.Insert(k)
+	FixInsert(t, n)
+	t.root.Color = Black
 }
 
 func (t *RBTree) Delete(k int) {
