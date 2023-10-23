@@ -2,6 +2,7 @@ package algo
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -12,10 +13,10 @@ type Node struct {
 	Right  *Node
 }
 
-func (n *Node) InOrderVisit() string {
+func (n *Node) preOrder() string {
 	if n != nil {
-		children := fmt.Sprintf("%s %s", n.Left.InOrderVisit(),
-			n.Right.InOrderVisit())
+		children := fmt.Sprintf("%s %s", n.Left.preOrder(),
+			n.Right.preOrder())
 		children = strings.Trim(children, " ")
 
 		if children == "" {
@@ -28,21 +29,30 @@ func (n *Node) InOrderVisit() string {
 	return ""
 }
 
-func (n *Node) Search(k int) *Node {
+func (n *Node) isBST(min, max int) bool {
+	if n == nil {
+		return true
+	}
+
+	return n.Key > min && n.Key < max &&
+		n.Left.isBST(min, n.Key) && n.Right.isBST(n.Key, max)
+}
+
+func (n *Node) search(k int) *Node {
 	if n == nil {
 		return nil
 	}
 	if k < n.Key {
-		return n.Left.Search(k)
+		return n.Left.search(k)
 	}
 	if k > n.Key {
-		return n.Right.Search(k)
+		return n.Right.search(k)
 	}
 
 	return n
 }
 
-func (n *Node) Successor() *Node {
+func (n *Node) successor() *Node {
 	if n == nil {
 		return nil
 	}
@@ -63,7 +73,7 @@ func (n *Node) Successor() *Node {
 	return y
 }
 
-func (n *Node) Insert(k int) {
+func (n *Node) insert(k int) {
 	if n == nil {
 		panic("insert on nil node")
 	}
@@ -72,7 +82,7 @@ func (n *Node) Insert(k int) {
 		if n.Left == nil {
 			n.Left = &Node{Key: k, Parent: n}
 		} else {
-			n.Left.Insert(k)
+			n.Left.insert(k)
 		}
 	}
 
@@ -80,14 +90,14 @@ func (n *Node) Insert(k int) {
 		if n.Right == nil {
 			n.Right = &Node{Key: k, Parent: n}
 		} else {
-			n.Right.Insert(k)
+			n.Right.insert(k)
 		}
 	}
 }
 
 // node has only one child, to remove it
 // just move up the child to its position
-func (n *Node) DropByChild(child *Node) {
+func (n *Node) replaceByChild(child *Node) {
 	if n == nil {
 		panic("node is nil")
 	}
@@ -107,7 +117,7 @@ func (n *Node) DropByChild(child *Node) {
 
 // use successor node m from the tree to
 // replace node n position
-func (n *Node) ReplaceBy(m *Node) {
+func (n *Node) transplant(m *Node) {
 	if n == nil {
 		panic("node is nil")
 	}
@@ -139,9 +149,11 @@ type BST struct {
 
 func (t *BST) IsEmpty() bool { return t.root == nil }
 
-func (t *BST) Visit() string { return t.root.InOrderVisit() }
+func (t *BST) Check() bool { return t.root.isBST(math.MinInt, math.MaxInt) }
 
-func (t *BST) Search(k int) *Node { return t.root.Search(k) }
+func (t *BST) Visit() string { return t.root.preOrder() }
+
+func (t *BST) Search(k int) *Node { return t.root.search(k) }
 
 func (t *BST) Insert(k int) {
 	if t.root == nil {
@@ -149,11 +161,11 @@ func (t *BST) Insert(k int) {
 		return
 	}
 
-	t.root.Insert(k)
+	t.root.insert(k)
 }
 
 func (t *BST) Delete(k int) {
-	n := t.root.Search(k)
+	n := t.root.search(k)
 	if n == nil {
 		return
 	}
@@ -161,17 +173,17 @@ func (t *BST) Delete(k int) {
 	var succ *Node
 
 	if n.Right == nil {
-		n.DropByChild(n.Left)
+		n.replaceByChild(n.Left)
 		succ = n.Left
 	} else if n.Left == nil {
-		n.DropByChild(n.Right)
+		n.replaceByChild(n.Right)
 		succ = n.Right
 	} else {
 		// left child of smallest successor node must be nil
 		// otherwise its left child is smaller
-		succ = n.Successor()
-		succ.DropByChild(succ.Right)
-		n.ReplaceBy(succ)
+		succ = n.successor()
+		succ.replaceByChild(succ.Right)
+		n.transplant(succ)
 	}
 
 	if n == t.root {

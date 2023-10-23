@@ -13,17 +13,17 @@ const (
 )
 
 type RBNode struct {
-	Key    int
 	Color  Color
+	Key    int
 	Parent *RBNode
 	Left   *RBNode
 	Right  *RBNode
 }
 
-func (n *RBNode) InOrderVisit() string {
+func (n *RBNode) preorder() string {
 	if n != nil {
-		children := fmt.Sprintf("%s %s", n.Left.InOrderVisit(),
-			n.Right.InOrderVisit())
+		children := fmt.Sprintf("%s %s", n.Left.preorder(),
+			n.Right.preorder())
 		children = strings.Trim(children, " ")
 
 		if children == "" {
@@ -128,7 +128,72 @@ func (n *RBNode) RotateLeft(tree *RBTree) {
 	}
 }
 
-func FixInsert(tree *RBTree, n *RBNode) {
+func (n *RBNode) DropByChild(child *RBNode) {
+	if n == nil {
+		panic("node is nil")
+	}
+
+	if n.Parent != nil {
+		if n == n.Parent.Left {
+			n.Parent.Left = child
+		} else {
+			n.Parent.Right = child
+		}
+	}
+
+	if child != nil {
+		child.Parent = n.Parent
+	}
+}
+
+func (n *RBNode) Successor() *RBNode {
+	if n == nil {
+		return nil
+	}
+	if n.Right != nil {
+		min := n.Right
+		for min.Left != nil {
+			min = min.Left
+		}
+		return min
+	}
+
+	y := n.Parent
+	for y != nil && n == y.Right {
+		n = y
+		y = n.Parent
+	}
+
+	return y
+}
+
+func (n *RBNode) ReplaceBy(m *RBNode) {
+	if n == nil {
+		panic("node is nil")
+	}
+
+	if n.Parent != nil {
+		if n == n.Parent.Left {
+			n.Parent.Left = m
+		} else {
+			n.Parent.Right = m
+		}
+	}
+
+	if m != nil {
+		m.Parent = n.Parent
+		m.Left = n.Left
+		m.Right = n.Right
+		if m.Left != nil {
+			m.Left.Parent = m
+		}
+		if m.Right != nil {
+			m.Right.Parent = m
+		}
+	}
+}
+
+func (tree *RBTree) FixInsert(n *RBNode) {
 	// n is root node or n's parent is black, then fix is done
 	if n.Parent == nil || n.Parent.Color == Black {
 		return
@@ -157,7 +222,7 @@ func FixInsert(tree *RBTree, n *RBNode) {
 		uncle.Color = Black
 		n.Parent.Color = Black
 		grandpa.Color = Red
-		FixInsert(tree, grandpa)
+		tree.FixInsert(grandpa)
 		return
 	}
 
@@ -183,7 +248,7 @@ type RBTree struct {
 
 func (t *RBTree) IsEmpty() bool { return t.root == nil }
 
-func (t *RBTree) Visit() string { return t.root.InOrderVisit() }
+func (t *RBTree) Visit() string { return t.root.preorder() }
 
 func (t *RBTree) Search(k int) *RBNode { return t.root.Search(k) }
 
@@ -194,9 +259,104 @@ func (t *RBTree) Insert(k int) {
 	}
 
 	n := t.root.Insert(k)
-	FixInsert(t, n)
+	t.FixInsert(n)
 	t.root.Color = Black
 }
 
+func (t *RBTree) FixDelete(n *RBNode) {
+	for n.Parent != nil && n.Color == Black {
+		sibling := n.Parent.Left
+		if n == n.Parent.Left {
+			sibling = n.Parent.Right
+		}
+
+		if sibling == nil {
+			n = n.Parent
+			continue
+		}
+
+		// rotate to make silbing color be black
+		if sibling.Color == Red {
+			if sibling == n.Parent.Left && sibling.Right != nil {
+				sibling.RotateLeft(t)
+				sibling = n.Parent.Left
+			} else if sibling == n.Parent.Right && sibling.Left != nil {
+				sibling.RotateRight(t)
+				sibling = n.Parent.Right
+			}
+		}
+
+		// as n has double black, sibling must have at least one child
+		// otherwise the subtree black height is not equal
+		// both children are black if any one exists
+		if (sibling.Left == nil || sibling.Left.Color == Black) &&
+			(sibling.Right == nil || sibling.Right.Color == Black) {
+			sibling.Color = Red
+			n = n.Parent
+			continue
+		}
+		// one child of sibling must be red
+		// rotate red to the same child branch direction as sibling to its parent
+		if sibling == n.Parent.Left {
+			if sibling.Left == nil || sibling.Left.Color == Black {
+				sibling.Color = Red
+				sibling.Right.Color = Black
+				sibling.RotateLeft(t)
+			}
+			sibling = n.Parent.Left // repoint sibling to new rotated node
+			sibling.Color = n.Parent.Color
+			sibling.Left.Color = Black
+			n.Parent.Color = Black
+			n.Parent.RotateRight(t)
+		} else {
+			if sibling.Right == nil || sibling.Right.Color == Black {
+				sibling.Color = Red
+				sibling.Left.Color = Black
+				sibling.RotateRight(t)
+			}
+			sibling = n.Parent.Right
+			sibling.Color = n.Parent.Color
+			sibling.Right.Color = Black
+			n.Parent.Color = Black
+			n.Parent.RotateLeft(t)
+		}
+
+		n = t.root
+	}
+
+	n.Color = Black
+}
+
 func (t *RBTree) Delete(k int) {
+	n := t.root.Search(k)
+	if n == nil {
+		return
+	}
+
+	y := n
+	color := n.Color
+	if n.Left == nil {
+		n.DropByChild(n.Right)
+		y = n.Right
+	} else if n.Right == nil {
+		n.DropByChild(n.Left)
+		y = n.Left
+	} else {
+		succ := n.Successor()
+		y = succ.Right
+		color = succ.Color
+		succ.DropByChild(succ.Right)
+		n.ReplaceBy(succ)
+		succ.Color = n.Color
+	}
+
+	if y == nil {
+		y = n.Parent
+	}
+
+	if color == Red {
+		return
+	}
+
+	t.FixDelete(y)
 }
