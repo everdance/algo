@@ -15,6 +15,7 @@ func TestAlgo_BST(t *testing.T) {
 	tree.Insert(1)
 	assert.Assert(t, !tree.IsEmpty())
 	assert.Assert(t, tree.Search(1).Key == 1)
+	tree.Delete(1)
 
 	tree.Insert(4)
 	assert.Equal(t, tree.Visit(), "4")

@@ -36,21 +36,21 @@ func (n *RBNode) preorder() string {
 	return ""
 }
 
-func (n *RBNode) Search(k int) *RBNode {
+func (n *RBNode) search(k int) *RBNode {
 	if n == nil {
 		return nil
 	}
 	if k < n.Key {
-		return n.Left.Search(k)
+		return n.Left.search(k)
 	}
 	if k > n.Key {
-		return n.Right.Search(k)
+		return n.Right.search(k)
 	}
 
 	return n
 }
 
-func (n *RBNode) Insert(k int) *RBNode {
+func (n *RBNode) insert(k int) *RBNode {
 	if n == nil {
 		panic("insert on nil node")
 	}
@@ -60,7 +60,7 @@ func (n *RBNode) Insert(k int) *RBNode {
 			n.Left = &RBNode{Key: k, Parent: n, Color: Red}
 			return n.Left
 		}
-		return n.Left.Insert(k)
+		return n.Left.insert(k)
 	}
 
 	if k > n.Key {
@@ -68,13 +68,13 @@ func (n *RBNode) Insert(k int) *RBNode {
 			n.Right = &RBNode{Key: k, Parent: n, Color: Red}
 			return n.Right
 		}
-		return n.Right.Insert(k)
+		return n.Right.insert(k)
 	}
 
 	return n
 }
 
-func (n *RBNode) RotateRight(tree *RBTree) {
+func (n *RBNode) rotateRight(tree *RBTree) {
 	// left child must exists
 	child := n.Left
 	if child == nil {
@@ -101,7 +101,7 @@ func (n *RBNode) RotateRight(tree *RBTree) {
 	}
 }
 
-func (n *RBNode) RotateLeft(tree *RBTree) {
+func (n *RBNode) rotateLeft(tree *RBTree) {
 	// right child must exists
 	child := n.Right
 	if child == nil {
@@ -128,7 +128,7 @@ func (n *RBNode) RotateLeft(tree *RBTree) {
 	}
 }
 
-func (n *RBNode) DropByChild(child *RBNode) {
+func (n *RBNode) replaceByChild(child *RBNode) {
 	if n == nil {
 		panic("node is nil")
 	}
@@ -146,10 +146,11 @@ func (n *RBNode) DropByChild(child *RBNode) {
 	}
 }
 
-func (n *RBNode) Successor() *RBNode {
+func (n *RBNode) successor() *RBNode {
 	if n == nil {
 		return nil
 	}
+
 	if n.Right != nil {
 		min := n.Right
 		for min.Left != nil {
@@ -167,7 +168,7 @@ func (n *RBNode) Successor() *RBNode {
 	return y
 }
 
-func (n *RBNode) ReplaceBy(m *RBNode) {
+func (n *RBNode) transplant(m *RBNode) {
 	if n == nil {
 		panic("node is nil")
 	}
@@ -193,6 +194,76 @@ func (n *RBNode) ReplaceBy(m *RBNode) {
 	}
 }
 
+type RBTree struct {
+	root *RBNode
+}
+
+func (t *RBTree) IsEmpty() bool { return t.root == nil }
+
+func (t *RBTree) Visit() string { return t.root.preorder() }
+
+func (t *RBTree) Search(k int) *RBNode { return t.root.search(k) }
+
+func (t *RBTree) Insert(k int) {
+	if t.root == nil {
+		t.root = &RBNode{Key: k, Color: Black}
+		return
+	}
+
+	n := t.root.insert(k)
+	t.FixInsert(n)
+	t.root.Color = Black
+}
+
+func (t *RBTree) Delete(k int) {
+	n := t.root.search(k)
+	if n == nil {
+		return
+	}
+
+	y := n
+	color := n.Color
+	succ := n.successor()
+	if n.Left == nil {
+		n.replaceByChild(n.Right)
+		succ = n.Right
+		y = n.Right
+	} else if n.Right == nil {
+		n.replaceByChild(n.Left)
+		y = n.Left
+		succ = n.Left
+	} else {
+		y = succ.Right
+		color = succ.Color
+		succ.replaceByChild(succ.Right)
+		n.transplant(succ)
+		succ.Color = n.Color
+	}
+
+	if n == t.root {
+		t.root = succ
+	}
+	// the node deleted or transplanted does not have children
+	if y == nil {
+		y = n.Parent
+		if y == nil {
+			t.root = nil
+			return
+		}
+
+		// parent has other child, so no need to do anything
+		if y.Left != nil || y.Right != nil {
+			return
+		}
+	}
+
+	if color == Red {
+		return
+	}
+
+	t.FixDelete(y)
+}
+
 func (tree *RBTree) FixInsert(n *RBNode) {
 	// n is root node or n's parent is black, then fix is done
 	if n.Parent == nil || n.Parent.Color == Black {
@@ -211,9 +282,9 @@ func (tree *RBTree) FixInsert(n *RBNode) {
 		n.Color = Red
 		n.Parent.Color = Black
 		if n.Parent == grandpa.Left {
-			grandpa.RotateRight(tree)
+			grandpa.rotateRight(tree)
 		} else {
-			grandpa.RotateLeft(tree)
+			grandpa.rotateLeft(tree)
 		}
 		return
 	}
@@ -231,36 +302,15 @@ func (tree *RBTree) FixInsert(n *RBNode) {
 
 	if uncle == grandpa.Right {
 		if n == n.Parent.Right {
-			n.Parent.RotateLeft(tree)
+			n.Parent.rotateLeft(tree)
 		}
-		grandpa.RotateRight(tree)
+		grandpa.rotateRight(tree)
 	} else {
 		if n == n.Parent.Left {
-			n.Parent.RotateRight(tree)
+			n.Parent.rotateRight(tree)
 		}
-		grandpa.RotateLeft(tree)
+		grandpa.rotateLeft(tree)
 	}
-}
-
-type RBTree struct {
-	root *RBNode
-}
-
-func (t *RBTree) IsEmpty() bool { return t.root == nil }
-
-func (t *RBTree) Visit() string { return t.root.preorder() }
-
-func (t *RBTree) Search(k int) *RBNode { return t.root.Search(k) }
-
-func (t *RBTree) Insert(k int) {
-	if t.root == nil {
-		t.root = &RBNode{Key: k, Color: Black}
-		return
-	}
-
-	n := t.root.Insert(k)
-	t.FixInsert(n)
-	t.root.Color = Black
 }
 
 func (t *RBTree) FixDelete(n *RBNode) {
@@ -278,10 +328,10 @@ func (t *RBTree) FixDelete(n *RBNode) {
 		// rotate to make silbing color be black
 		if sibling.Color == Red {
 			if sibling == n.Parent.Left && sibling.Right != nil {
-				sibling.RotateLeft(t)
+				sibling.rotateLeft(t)
 				sibling = n.Parent.Left
 			} else if sibling == n.Parent.Right && sibling.Left != nil {
-				sibling.RotateRight(t)
+				sibling.rotateRight(t)
 				sibling = n.Parent.Right
 			}
 		}
@@ -301,62 +351,28 @@ func (t *RBTree) FixDelete(n *RBNode) {
 			if sibling.Left == nil || sibling.Left.Color == Black {
 				sibling.Color = Red
 				sibling.Right.Color = Black
-				sibling.RotateLeft(t)
+				sibling.rotateLeft(t)
 			}
 			sibling = n.Parent.Left // repoint sibling to new rotated node
 			sibling.Color = n.Parent.Color
 			sibling.Left.Color = Black
 			n.Parent.Color = Black
-			n.Parent.RotateRight(t)
+			n.Parent.rotateRight(t)
 		} else {
 			if sibling.Right == nil || sibling.Right.Color == Black {
 				sibling.Color = Red
 				sibling.Left.Color = Black
-				sibling.RotateRight(t)
+				sibling.rotateRight(t)
 			}
 			sibling = n.Parent.Right
 			sibling.Color = n.Parent.Color
 			sibling.Right.Color = Black
 			n.Parent.Color = Black
-			n.Parent.RotateLeft(t)
+			n.Parent.rotateLeft(t)
 		}
 
 		n = t.root
 	}
 
 	n.Color = Black
-}
-
-func (t *RBTree) Delete(k int) {
-	n := t.root.Search(k)
-	if n == nil {
-		return
-	}
-
-	y := n
-	color := n.Color
-	if n.Left == nil {
-		n.DropByChild(n.Right)
-		y = n.Right
-	} else if n.Right == nil {
-		n.DropByChild(n.Left)
-		y = n.Left
-	} else {
-		succ := n.Successor()
-		y = succ.Right
-		color = succ.Color
-		succ.DropByChild(succ.Right)
-		n.ReplaceBy(succ)
-		succ.Color = n.Color
-	}
-
-	if y == nil {
-		y = n.Parent
-	}
-
-	if color == Red {
-		return
-	}
-
-	t.FixDelete(y)
 }
