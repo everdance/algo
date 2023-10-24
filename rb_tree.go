@@ -2,6 +2,7 @@ package algo
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -12,15 +13,15 @@ const (
 	Black Color = "B"
 )
 
-type RBNode struct {
+type RBnode struct {
 	Color  Color
 	Key    int
-	Parent *RBNode
-	Left   *RBNode
-	Right  *RBNode
+	Parent *RBnode
+	Left   *RBnode
+	Right  *RBnode
 }
 
-func (n *RBNode) preorder() string {
+func (n *RBnode) preorder() string {
 	if n != nil {
 		children := fmt.Sprintf("%s %s", n.Left.preorder(),
 			n.Right.preorder())
@@ -36,7 +37,7 @@ func (n *RBNode) preorder() string {
 	return ""
 }
 
-func (n *RBNode) search(k int) *RBNode {
+func (n *RBnode) search(k int) *RBnode {
 	if n == nil {
 		return nil
 	}
@@ -50,14 +51,14 @@ func (n *RBNode) search(k int) *RBNode {
 	return n
 }
 
-func (n *RBNode) insert(k int) *RBNode {
+func (n *RBnode) insert(k int) *RBnode {
 	if n == nil {
 		panic("insert on nil node")
 	}
 
 	if k < n.Key {
 		if n.Left == nil {
-			n.Left = &RBNode{Key: k, Parent: n, Color: Red}
+			n.Left = &RBnode{Key: k, Parent: n, Color: Red}
 			return n.Left
 		}
 		return n.Left.insert(k)
@@ -65,7 +66,7 @@ func (n *RBNode) insert(k int) *RBNode {
 
 	if k > n.Key {
 		if n.Right == nil {
-			n.Right = &RBNode{Key: k, Parent: n, Color: Red}
+			n.Right = &RBnode{Key: k, Parent: n, Color: Red}
 			return n.Right
 		}
 		return n.Right.insert(k)
@@ -74,7 +75,7 @@ func (n *RBNode) insert(k int) *RBNode {
 	return n
 }
 
-func (n *RBNode) rotateRight(tree *RBTree) {
+func (n *RBnode) rotateRight(tree *RBTree) {
 	// left child must exists
 	child := n.Left
 	if child == nil {
@@ -101,7 +102,7 @@ func (n *RBNode) rotateRight(tree *RBTree) {
 	}
 }
 
-func (n *RBNode) rotateLeft(tree *RBTree) {
+func (n *RBnode) rotateLeft(tree *RBTree) {
 	// right child must exists
 	child := n.Right
 	if child == nil {
@@ -128,7 +129,7 @@ func (n *RBNode) rotateLeft(tree *RBTree) {
 	}
 }
 
-func (n *RBNode) replaceByChild(child *RBNode) {
+func (n *RBnode) replaceByChild(child *RBnode) {
 	if n == nil {
 		panic("node is nil")
 	}
@@ -146,7 +147,7 @@ func (n *RBNode) replaceByChild(child *RBNode) {
 	}
 }
 
-func (n *RBNode) successor() *RBNode {
+func (n *RBnode) successor() *RBnode {
 	if n == nil {
 		return nil
 	}
@@ -168,7 +169,7 @@ func (n *RBNode) successor() *RBNode {
 	return y
 }
 
-func (n *RBNode) transplant(m *RBNode) {
+func (n *RBnode) transplant(m *RBnode) {
 	if n == nil {
 		panic("node is nil")
 	}
@@ -194,7 +195,19 @@ func (n *RBNode) transplant(m *RBNode) {
 	}
 }
 
-func (n *RBNode) isRBTree(h int, pColor Color) bool {
+func (n *RBnode) isBST(min, max int) bool {
+	if n == nil {
+		return true
+	}
+
+	if n.Key < min || n.Key > max {
+		return false
+	}
+
+	return n.Left.isBST(min, n.Key) && n.Right.isBST(n.Key, max)
+}
+
+func (n *RBnode) isRBTree(h int, pColor Color) bool {
 	if n == nil {
 		return h == 0
 	}
@@ -209,14 +222,14 @@ func (n *RBNode) isRBTree(h int, pColor Color) bool {
 }
 
 type RBTree struct {
-	root *RBNode
+	root *RBnode
 }
 
 func (t *RBTree) IsEmpty() bool { return t.root == nil }
 
 func (t *RBTree) Visit() string { return t.root.preorder() }
 
-func (t *RBTree) Search(k int) *RBNode { return t.root.search(k) }
+func (t *RBTree) Search(k int) *RBnode { return t.root.search(k) }
 
 func (t *RBTree) Height() int {
 	h := 0
@@ -231,13 +244,13 @@ func (t *RBTree) Height() int {
 }
 
 func (t *RBTree) Check() bool {
-	h := t.Height()
-	return t.root.isRBTree(h, Red)
+	return t.root.isRBTree(t.Height(), Red) &&
+		t.root.isBST(math.MinInt, math.MaxInt)
 }
 
 func (t *RBTree) Insert(k int) {
 	if t.root == nil {
-		t.root = &RBNode{Key: k, Color: Black}
+		t.root = &RBnode{Key: k, Color: Black}
 		return
 	}
 
@@ -295,7 +308,7 @@ func (t *RBTree) Delete(k int) {
 	t.FixDelete(y)
 }
 
-func (tree *RBTree) FixInsert(n *RBNode) {
+func (tree *RBTree) FixInsert(n *RBnode) {
 	// n is root node or n's parent is black, then fix is done
 	if n.Parent == nil || n.Parent.Color == Black {
 		return
@@ -344,7 +357,7 @@ func (tree *RBTree) FixInsert(n *RBNode) {
 	}
 }
 
-func (t *RBTree) FixDelete(n *RBNode) {
+func (t *RBTree) FixDelete(n *RBnode) {
 	for n.Parent != nil && n.Color == Black {
 		sibling := n.Parent.Left
 		if n == n.Parent.Left {
