@@ -30,6 +30,7 @@ func TestAlgo_RBTree(t *testing.T) {
 	assert.Equal(t, tree.Visit(), "2B {1B 4R {3B 5B {6R}}}")
 	tree.Insert(7)
 	assert.Equal(t, tree.Visit(), "2B {1B 4R {3B 6B {5R 7R}}}")
+	assert.Assert(t, tree.Check())
 
 	tree.Delete(3)
 	assert.Equal(t, tree.Visit(), "2B {1B 4R {6B {5R 7R}}}")
@@ -37,6 +38,9 @@ func TestAlgo_RBTree(t *testing.T) {
 	assert.Equal(t, tree.Visit(), "2B {1B 4R {6B {7R}}}")
 	tree.Delete(1)
 	assert.Equal(t, tree.Visit(), "2B {4R {6B {7R}}}")
+
+	assert.Assert(t, tree.Check())
+
 	tree.Delete(6)
 	assert.Equal(t, tree.Visit(), "2B {4R {7B}}")
 	tree.Delete(4)
@@ -44,5 +48,7 @@ func TestAlgo_RBTree(t *testing.T) {
 	tree.Delete(2)
 	assert.Equal(t, tree.Visit(), "7B")
 	tree.Delete(7)
+
 	assert.Assert(t, tree.IsEmpty())
+	assert.Assert(t, tree.Check())
 }

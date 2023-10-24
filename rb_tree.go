@@ -194,6 +194,20 @@ func (n *RBNode) transplant(m *RBNode) {
 	}
 }
 
+func (n *RBNode) isRBTree(h int, pColor Color) bool {
+	if n == nil {
+		return h == 0
+	}
+
+	if n.Color == Black {
+		h--
+	} else if pColor == Red {
+		return false
+	}
+
+	return n.Left.isRBTree(h, n.Color) && n.Right.isRBTree(h, n.Color)
+}
+
 type RBTree struct {
 	root *RBNode
 }
@@ -203,6 +217,23 @@ func (t *RBTree) IsEmpty() bool { return t.root == nil }
 func (t *RBTree) Visit() string { return t.root.preorder() }
 
 func (t *RBTree) Search(k int) *RBNode { return t.root.search(k) }
+
+func (t *RBTree) Height() int {
+	h := 0
+	x := t.root
+	for x != nil {
+		if x.Color == Black {
+			h++
+		}
+		x = x.Left
+	}
+	return h
+}
+
+func (t *RBTree) Check() bool {
+	h := t.Height()
+	return t.root.isRBTree(h, Red)
+}
 
 func (t *RBTree) Insert(k int) {
 	if t.root == nil {
