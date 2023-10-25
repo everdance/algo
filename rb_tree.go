@@ -134,16 +134,24 @@ func (n *RBnode) replaceByChild(child *RBnode) {
 		panic("node is nil")
 	}
 
+	var sibling *RBnode
 	if n.Parent != nil {
 		if n == n.Parent.Left {
 			n.Parent.Left = child
+			sibling = n.Parent.Right
 		} else {
 			n.Parent.Right = child
+			sibling = n.Parent.Left
 		}
 	}
 
 	if child != nil {
 		child.Parent = n.Parent
+	} else { // compensate color for no child removal
+		if n.Color == Black && sibling != nil {
+			if sibling.Color == Black {
+			}
+		}
 	}
 }
 
@@ -267,38 +275,42 @@ func (t *RBTree) Delete(k int) {
 
 	y := n
 	color := n.Color
-	succ := n.successor()
+	succ := y
 	if n.Left == nil {
 		n.replaceByChild(n.Right)
-		succ = n.Right
 		y = n.Right
+		succ = y
 	} else if n.Right == nil {
 		n.replaceByChild(n.Left)
 		y = n.Left
-		succ = n.Left
+		succ = y
 	} else {
-		y = succ.Right
-		color = succ.Color
-		succ.replaceByChild(succ.Right)
-		n.transplant(succ)
-		succ.Color = n.Color
+		succ = n.successor()
+		if succ == n.Right {
+			n.replaceByChild(succ)
+			y = n.Right
+		} else { // succ must has no left child
+			y = succ.Right
+			if y != nil {
+				color = y.Color
+				y.Color = succ.Color
+			} else {
+				color = succ.Color
+				y = succ.Parent
+			}
+			succ.replaceByChild(succ.Right)
+			n.transplant(succ)
+			succ.Color = n.Color
+		}
 	}
 
-	if n == t.root {
+	if t.root == n {
 		t.root = succ
 	}
-	// the node deleted or transplanted does not have children
+
+	// n has no children
 	if y == nil {
 		y = n.Parent
-		if y == nil {
-			t.root = nil
-			return
-		}
-
-		// parent has other child, so no need to do anything
-		if y.Left != nil || y.Right != nil {
-			return
-		}
 	}
 
 	if color == Red {
