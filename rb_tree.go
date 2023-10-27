@@ -72,7 +72,7 @@ func (n *RBnode) insert(k int) *RBnode {
 		return n.Right.insert(k)
 	}
 
-	return n
+	return nil
 }
 
 func (n *RBnode) rotateRight(tree *RBTree) {
@@ -258,7 +258,9 @@ func (t *RBTree) Insert(k int) {
 	}
 
 	n := t.root.insert(k)
-	t.FixInsert(n)
+	if n != nil {
+		t.FixInsert(n)
+	}
 	t.root.Color = Black
 }
 
@@ -383,6 +385,7 @@ func (tree *RBTree) FixInsert(n *RBnode) {
 		return
 	}
 
+	// because parent exists and has Red color
 	// grandparent must exist and its color must be black
 	grandpa := n.Parent.Parent
 	uncle := grandpa.Right
@@ -390,13 +393,22 @@ func (tree *RBTree) FixInsert(n *RBnode) {
 		uncle = grandpa.Left
 	}
 
-	if uncle == nil {
+	if uncle == nil { // n must be a single child of its parent
 		grandpa.Color = Red
-		n.Color = Red
 		n.Parent.Color = Black
 		if n.Parent == grandpa.Left {
+			if n == n.Parent.Right {
+				n.Parent.Color = Red
+				n.Color = Black
+				n.Parent.rotateLeft(tree)
+			}
 			grandpa.rotateRight(tree)
 		} else {
+			if n == n.Parent.Left {
+				n.Parent.Color = Red
+				n.Color = Black
+				n.Parent.rotateRight(tree)
+			}
 			grandpa.rotateLeft(tree)
 		}
 		return
@@ -415,11 +427,15 @@ func (tree *RBTree) FixInsert(n *RBnode) {
 
 	if uncle == grandpa.Right {
 		if n == n.Parent.Right {
+			n.Parent.Color = Red
+			n.Color = Black
 			n.Parent.rotateLeft(tree)
 		}
 		grandpa.rotateRight(tree)
 	} else {
 		if n == n.Parent.Left {
+			n.Parent.Color = Red
+			n.Color = Black
 			n.Parent.rotateRight(tree)
 		}
 		grandpa.rotateLeft(tree)
