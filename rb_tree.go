@@ -317,7 +317,6 @@ func (t *RBTree) Delete(k int) {
 		//      / \
 		//     a   b
 		var a, b, s *RBnode
-		color = z.Color
 
 		if z.Left != nil {
 			s = z.Left
@@ -341,26 +340,32 @@ func (t *RBTree) Delete(k int) {
 			y = z
 		}
 
-		if s != nil {
-			z.Color = s.Color
-			s.Color = color
-		}
-
-		if y == nil {
+		if b == nil && s != nil { // y == nil
 			//   z          s
 			//    \   ->   /
 			//     s      z
 			y = s
 			if s.Left == z || s.Right == z {
+				s.Color = z.Color
 				z.Color = Red
-			} else {
+			} else if a != nil {
 				//   z          a
 				//    \   ->   / \
 				//     s      z   s
 				//    /
 				//   a
+				color = a.Color
 				a.Color = z.Color
+				z.Color = s.Color
+				y = a
+			}
+		} else if s != nil { // both s and b exists
+			color = s.Color
+			s.Color = z.Color
+			z.Color = color
+			if color == Red && a != nil && b != nil { // s color is red, it must have two black
 				z.Color = Black
+				a.Color = Red
 			}
 		}
 	}
