@@ -129,49 +129,25 @@ func (n *RBnode) rotateLeft(tree *RBTree) {
 	}
 }
 
-func (n *RBnode) replaceWith(x *RBnode, tree *RBTree) *RBnode {
+// directly remove n by its only child c
+func (n *RBnode) removeBy(c *RBnode, tree *RBTree) {
 	if n == nil {
 		panic("node is nil")
 	}
 
-	if x != nil {
-		x.Parent = n.Parent
+	if c != nil {
+		c.Parent = n.Parent
 	}
 
 	if n.Parent == nil {
-		return x
+		return
 	}
 
-	var sibling *RBnode
 	if n == n.Parent.Left {
-		n.Parent.Left = x
-		sibling = n.Parent.Right
+		n.Parent.Left = c
 	} else {
-		n.Parent.Right = x
-		sibling = n.Parent.Left
+		n.Parent.Right = c
 	}
-
-	if x != nil || n.Color == Red {
-		return x
-	}
-
-	// n has no children, sibling must exist
-	if sibling.Color == Black {
-		sibling.Color = Red
-		return n.Parent
-	}
-
-	// Red sibling must have two black children
-	// one rotation fix the issue
-	if sibling == n.Parent.Left {
-		n.Parent.rotateRight(tree)
-	} else {
-		n.Parent.rotateLeft(tree)
-	}
-	sibling.Color = n.Parent.Color
-	n.Parent.Color = Red
-
-	return tree.root
 }
 
 func (n *RBnode) successor() *RBnode {
@@ -292,60 +268,101 @@ func (t *RBTree) Delete(k int) {
 		return
 	}
 
-	y := n
+	y := n // first bottom node we need to start fix on
 	color := n.Color
-	succ := y
+	succ := n.successor()
+	// the parent node we can hold on to in case the deleted node does not have children
+	z := n.Parent
 	if n.Left == nil {
-		y = n.replaceWith(n.Right, t)
+		n.removeBy(n.Right, t)
+		y = n.Right
 		succ = y
 	} else if n.Right == nil {
-		y = n.replaceWith(n.Left, t)
+		n.removeBy(n.Left, t)
+		y = n.Left
 		succ = y
-	} else {
-		succ = n.successor()
+	} else { // successor must exists in n's right branch
+		color = succ.Color
+		y = succ.Right
+		succ.Color = n.Color
+
 		if succ == n.Right {
-			//      n
-			//     / \
-			//    l   succ
-			//   / \    \
-			//  ?   ?    ?
-			if succ.Right != nil {
-				//     succ
-				//     / \
-				//    l   c
-				//   / \
-				//   ?  ?
-				y = succ.Right
-			} else {
-				//      n
-				//     / \
-				//    l  succ
-				//   / \
-				//  ?   ?
-				if succ.Color == Black {
-					// l's children is black
-					if n.Left.Color == Red {
-						n.Left.Color = Black
-						n.Left.Left.Color = Red
-						n.Left.Right.Color = Red
-					}
-				}
-				succ.Left = n.Left.Right
-				n.Left.Right = nil
-				succ = n.Left
-				y = n.Left
+			n.removeBy(succ, t)
+			succ.Left = n.Left
+			if n.Left != nil {
+				n.Left.Parent = succ
 			}
-			n.replaceWith(succ, t)
-			succ.Color = n.Color
-		} else { // succ must has no left child
-			y = succ.replaceWith(succ.Right, t)
+			z = succ // n is replaced succ directly
+		} else {
+			z = succ.Parent // succ is moved out to replace n
+			succ.removeBy(succ.Right, t)
 			n.transplant(succ)
 		}
-		color = succ.Color
 	}
 
 	if t.root == n {
 		t.root = succ
+	}
+
+	if y == nil {
+		if z == nil {
+			return
+		}
+
+		// z has at most left or right child, and only one extra level of grand chidren
+		// the deleted child is Black
+		//     z
+		//    ? \
+		//    y  s
+		//      / \
+		//     a   b
+		var a, b, s *RBnode
+		color = z.Color
+
+		if z.Left != nil {
+			s = z.Left
+			a = z.Left.Right
+			b = z.Left.Left
+			if b == nil && a != nil {
+				z.Left.rotateLeft(t)
+			}
+			z.rotateRight(t)
+			y = b
+		} else if z.Right != nil {
+			s = z.Right
+			a = z.Right.Left
+			b = z.Right.Right
+			if b == nil && a != nil {
+				z.Right.rotateRight(t)
+			}
+			z.rotateLeft(t)
+			y = b
+		} else {
+			y = z
+		}
+
+		if s != nil {
+			z.Color = s.Color
+			s.Color = color
+		}
+
+		if y == nil {
+			//   z          s
+			//    \   ->   /
+			//     s      z
+			y = s
+			if s.Left == z || s.Right == z {
+				z.Color = Red
+			} else {
+				//   z          a
+				//    \   ->   / \
+				//     s      z   s
+				//    /
+				//   a
+				a.Color = z.Color
+				z.Color = Black
+			}
+		}
 	}
 
 	if color == Red {
