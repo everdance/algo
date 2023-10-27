@@ -264,121 +264,6 @@ func (t *RBTree) Insert(k int) {
 	t.root.Color = Black
 }
 
-func (t *RBTree) Delete(k int) {
-	n := t.root.search(k)
-	if n == nil {
-		return
-	}
-
-	y := n // first bottom node we need to start fix on
-	color := n.Color
-	succ := n.successor()
-	// the parent node we can hold on to in case the deleted node does not have children
-	z := n.Parent
-	if n.Left == nil {
-		n.removeBy(n.Right, t)
-		y = n.Right
-		succ = y
-	} else if n.Right == nil {
-		n.removeBy(n.Left, t)
-		y = n.Left
-		succ = y
-	} else { // successor must exists in n's right branch
-		color = succ.Color
-		y = succ.Right
-		succ.Color = n.Color
-
-		if succ == n.Right {
-			n.removeBy(succ, t)
-			succ.Left = n.Left
-			if n.Left != nil {
-				n.Left.Parent = succ
-			}
-			z = succ // n is replaced succ directly
-		} else {
-			z = succ.Parent // succ is moved out to replace n
-			succ.removeBy(succ.Right, t)
-			n.transplant(succ)
-		}
-	}
-
-	if t.root == n {
-		t.root = succ
-	}
-
-	if y == nil {
-		if z == nil {
-			return
-		}
-
-		// z has at most left or right child, and only one extra level of grand chidren
-		// the deleted child is Black
-		//     z
-		//    ? \
-		//    y  s
-		//      / \
-		//     a   b
-		var a, b, s *RBnode
-
-		if z.Left != nil {
-			s = z.Left
-			a = z.Left.Right
-			b = z.Left.Left
-			if b == nil && a != nil {
-				z.Left.rotateLeft(t)
-			}
-			z.rotateRight(t)
-			y = b
-		} else if z.Right != nil {
-			s = z.Right
-			a = z.Right.Left
-			b = z.Right.Right
-			if b == nil && a != nil {
-				z.Right.rotateRight(t)
-			}
-			z.rotateLeft(t)
-			y = b
-		} else {
-			y = z
-		}
-
-		if b == nil && s != nil { // y == nil
-			//   z          s
-			//    \   ->   /
-			//     s      z
-			y = s
-			if s.Left == z || s.Right == z {
-				s.Color = z.Color
-				z.Color = Red
-			} else if a != nil {
-				//   z          a
-				//    \   ->   / \
-				//     s      z   s
-				//    /
-				//   a
-				color = a.Color
-				a.Color = z.Color
-				z.Color = s.Color
-				y = a
-			}
-		} else if s != nil { // both s and b exists
-			color = s.Color
-			s.Color = z.Color
-			z.Color = color
-			if color == Red && a != nil && b != nil { // s color is red, it must have two black
-				z.Color = Black
-				a.Color = Red
-			}
-		}
-	}
-
-	if color == Red {
-		return
-	}
-
-	t.FixDelete(y)
-}
-
 func (tree *RBTree) FixInsert(n *RBnode) {
 	// n is root node or n's parent is black, then fix is done
 	if n.Parent == nil || n.Parent.Color == Black {
@@ -442,6 +327,140 @@ func (tree *RBTree) FixInsert(n *RBnode) {
 	}
 }
 
+func (t *RBTree) Delete(k int) {
+	n := t.root.search(k)
+	if n == nil {
+		return
+	}
+
+	y := n // first bottom node we need to start fix on
+	color := n.Color
+	succ := n.successor()
+	// the parent node we can hold on to in case the deleted node does not have children
+	z := n.Parent
+	if n.Left == nil {
+		n.removeBy(n.Right, t)
+		y = n.Right
+		succ = y
+	} else if n.Right == nil {
+		n.removeBy(n.Left, t)
+		y = n.Left
+		succ = y
+	} else { // successor must exists in n's right branch
+		color = succ.Color
+		y = succ.Right
+		succ.Color = n.Color
+
+		if succ == n.Right {
+			n.removeBy(succ, t)
+			succ.Left = n.Left
+			if n.Left != nil {
+				n.Left.Parent = succ
+			}
+			z = succ // n is replaced succ directly
+		} else {
+			z = succ.Parent // succ is moved out to replace n
+			succ.removeBy(succ.Right, t)
+			n.transplant(succ)
+		}
+	}
+
+	if t.root == n {
+		t.root = succ
+	}
+
+	if y == nil {
+		if z == nil {
+			return
+		}
+
+		y, color = t.fixStartPoint(z, color)
+	}
+
+	if color == Red {
+		return
+	}
+
+	t.FixDelete(y)
+}
+
+func (t *RBTree) fixStartPoint(z *RBnode, c Color) (*RBnode, Color) {
+	// z has at most left or right child, and only at most one level of grand chidren
+	// the deleted child is Black
+	//     z             z
+	//    : \           :  \
+	//    x  s   or     x   s
+	//      / \
+	//     a   b
+	var a, b, s, y *RBnode
+
+	if z.Left != nil {
+		s = z.Left
+		a = z.Left.Right
+		b = z.Left.Left
+		if b == nil && a != nil {
+			z.Left.rotateLeft(t)
+		}
+		if b == nil && a != nil {
+			z.Right.rotateLeft(t)
+			c = a.Color
+			a.Color = z.Color
+			z.Color = s.Color
+			y = a
+		} else if a == nil {
+			s.Color = z.Color
+			z.Color = Red
+			y = s
+		} else {
+			s.Color = z.Color
+			a.Color = Red
+			z.Color = Black
+			b.Color = Black
+			y = t.root
+		}
+		z.rotateRight(t)
+	} else if z.Right != nil {
+		s = z.Right
+		a = z.Right.Left
+		b = z.Right.Right
+		if b == nil && a != nil {
+			//   z          a
+			//    \   ->   / \
+			//     s      z   s
+			//    /
+			//   a
+			z.Right.rotateRight(t)
+			c = a.Color
+			a.Color = z.Color
+			z.Color = s.Color
+			y = a
+		} else if a == nil {
+			//   z          s
+			//    \   ->   /
+			//     s      z
+			s.Color = z.Color
+			z.Color = Red
+			y = s
+		} else {
+			//   z          s
+			//    \   ->   / \
+			//     s      z   b
+			//    / \      \
+			//   a   b      a
+			s.Color = z.Color
+			a.Color = Red
+			z.Color = Black
+			b.Color = Black
+			y = t.root
+		}
+		z.rotateLeft(t)
+	} else {
+		y = z
+	}
+
+	return y, c
+}
+
 func (t *RBTree) FixDelete(n *RBnode) {
 	for n.Parent != nil && n.Color == Black {
 		sibling := n.Parent.Left
@@ -449,18 +468,16 @@ func (t *RBTree) FixDelete(n *RBnode) {
 			sibling = n.Parent.Right
 		}
 
-		if sibling == nil {
-			n = n.Parent
-			continue
-		}
-
+		// sibling must exists as n is black
 		// rotate to make silbing color be black
 		if sibling.Color == Red {
-			if sibling == n.Parent.Left && sibling.Right != nil {
-				sibling.rotateLeft(t)
+			n.Parent.Color = Red
+			sibling.Color = Black
+			if sibling == n.Parent.Left {
+				n.Parent.rotateRight(t)
 				sibling = n.Parent.Left
-			} else if sibling == n.Parent.Right && sibling.Left != nil {
-				sibling.rotateRight(t)
+			} else {
+				n.Parent.rotateLeft(t)
 				sibling = n.Parent.Right
 			}
 		}
