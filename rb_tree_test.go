@@ -55,8 +55,8 @@ func TestAlgo_RBTree(t *testing.T) {
 
 	i := 0
 	keys := []int{}
-	for i < 1000 {
-		k := rand.Intn(1000)
+	for i < 10000 {
+		k := rand.Intn(10000)
 		keys = append(keys, k)
 		tree.Insert(k)
 		assert.Assert(t, tree.Check())
