@@ -36,10 +36,7 @@ func TestAlgo_RBTree(t *testing.T) {
 
 	for _, k := range keys {
 		tree.Delete(k)
-		if !tree.Check() {
-			panic("check failed")
-		}
-		// assert.Assert(t, tree.Check())
+		assert.Assert(t, tree.Check())
 	}
 
 	assert.Assert(t, tree.IsEmpty())
