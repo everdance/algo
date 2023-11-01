@@ -31,12 +31,12 @@ func TestAlgo_RBTree(t *testing.T) {
 
 	for _, k := range keys {
 		tree.Insert(k)
-		assert.Assert(t, tree.Check())
+		assert.Assert(t, tree.Check(), "insert violates rb tree")
 	}
 
 	for _, k := range keys {
 		tree.Delete(k)
-		assert.Assert(t, tree.Check())
+		assert.Assert(t, tree.Check(), "delete violates rb tree")
 	}
 
 	assert.Assert(t, tree.IsEmpty())

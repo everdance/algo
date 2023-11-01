@@ -378,34 +378,24 @@ func (t *RBTree) Delete(k int) {
 			return
 		}
 
-		order := z.preorder()
 		y = t.fixStartPoint(z)
-		color = Red
-		if z.Parent.Parent != nil {
-			color = z.Parent.Parent.Color
-		}
-
-		if y == t.root && !z.Parent.isRBTree(z.Parent.height(), color) {
-			fmt.Println(order)
-			fmt.Println("delete:", n.Key, n.Color)
-			fmt.Println(z.Parent.preorder())
-			panic("fix start buggy")
-		}
 	}
 
 	t.FixDelete(y)
 }
 
 func (t *RBTree) fixStartPoint(z *RBnode) *RBnode {
-	// we should start fix bottomed on y, but because y is nil,
+	// we should start fix from deleted node's child y, but because y is nil,
 	// we have to find a new start point based on deleted node's parent z
 	// z right now has at either left or right child only, and
-	// at most one level of grand chidren, the removed child node is black
-	//     z             z
-	//    : \           :  \
-	//    y  s   or     y   s
-	//      / \
-	//     a   b
+	// at most three levels of chidren, the removed child node is black
+	//     z       z             z
+	//    : \     : \           :  \
+	//    y  s    y  s   or     y   s
+	//      / \     / \
+	//     a   b   a   b
+	//    / \ / \
+	//   i  j k  l
 	var a, b, s, y *RBnode
 
 	if z.Right != nil {
@@ -514,13 +504,13 @@ func (t *RBTree) FixDelete(n *RBnode) {
 		// as n has double black, sibling must have left and right child
 		// otherwise the subtree black height is not equal
 		if sibling.isleaf() {
-			fmt.Println(n.Parent.preorder())
 			panic("sibling can't be leaf")
 		}
 
+		// rotate to get sibling color black
 		if sibling.Color == Red {
+			sibling.Color = n.Parent.Color
 			n.Parent.Color = Red
-			sibling.Color = Black
 			if sibling == n.Parent.Left {
 				n.Parent.rotateRight(t)
 				sibling = n.Parent.Left
@@ -543,7 +533,7 @@ func (t *RBTree) FixDelete(n *RBnode) {
 				sibling.Right.Color = Black
 				sibling.rotateLeft(t)
 			}
-			sibling = n.Parent.Left // repoint sibling to new rotated node
+			sibling = n.Parent.Left // new rotated sibiling node
 			sibling.Color = n.Parent.Color
 			sibling.Left.Color = Black
 			n.Parent.Color = Black
@@ -565,13 +555,4 @@ func (t *RBTree) FixDelete(n *RBnode) {
 	}
 
 	n.Color = Black
-
-	color := Red
-	if n.Parent != nil {
-		color = n.Parent.Color
-	}
-	if !n.isRBTree(n.height(), color) {
-		fmt.Println(n.preorder())
-		panic("fix check return incorrect")
-	}
 }
