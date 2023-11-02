@@ -380,123 +380,101 @@ func (t *RBTree) Delete(k int) {
 		y = t.fixNil(z)
 	}
 
-	t.FixDelete(y)
+	t.fixBlack(y)
 }
 
+// when y is nil, we have to find a new start node based on deleted node's parent z
+// z right now has at either left or right child only, most three layers of children
+//
+//	  z            z             z
+//	 : \          : \           :  \
+//	 y  s    OR   y  s    OR    y   s
+//	   / \          / \
+//	  a   b        a   b
+//	 / \ / \
+//	i  j k  l
 func (t *RBTree) fixNil(z *RBnode) *RBnode {
-	// we should start fix from deleted node's child y, but because y is nil,
-	// we have to find a new start point based on deleted node's parent z
-	// z right now has at either left or right child only, and
-	// at most three levels of chidren, the removed child node is black
-	//     z            z             z
-	//    : \          : \           :  \
-	//    y  s    OR   y  s    OR    y   s
-	//      / \          / \
-	//     a   b        a   b
-	//    / \ / \
-	//   i  j k  l
+	// this is impossible as if z is now leaf node
+	// then the previously deleted child node must be red node
+	//  we should have returned already
+	if z.isleaf() || (z.Left != nil && z.Right != nil) {
+		panic("z can only has one child")
+	}
+
 	var a, b, s, y *RBnode
+	var dir Direction
 
 	if z.Right != nil {
 		s = z.Right
 		a = z.Right.Left
 		b = z.Right.Right
-		if a != nil && b == nil {
-			//   z          a
-			//    \   ->   / \
-			//     s      z   s
-			//    /
-			//   a
-			s.rotate(Right, t)
-			z.rotate(Left, t)
-			a.Color = z.Color
-			z.Color = s.Color // black
-			y = t.root
-		} else if a == nil && b == nil {
-			//   z
-			//    \
-			//     s
-			s.Color = Red // s color is black as the removed child
-			y = z
-		} else if a == nil && b != nil {
-			//   z              s
-			//    \            / \
-			//     s    ->    z   b
-			//      \
-			//       b
-			z.rotate(Left, t)
-			s.Color = z.Color // s color is black as the removed child
-			b.Color = Black
-			z.Color = Black
-			y = t.root
-		} else if a.isleaf() {
-			//   z          s
-			//    \   ->   / \
-			//     s      z   b
-			//    / \      \
-			//   a   b      a
-			s.Color = z.Color
-			b.Color = Black
-			a.Color = Red
-			z.Color = Black
-			z.rotate(Left, t)
-			y = t.root
-		} else {
-			//   z                          s
-			//    \             ->         / \
-			//     s   (red)              z   b
-			//    / \                      \   \
-			//   a   b (black)              a   k
-			//  / \ /                      / \
-			// i  j k   (red)             i   j
-			z.rotate(Left, t)
-			s.Color = z.Color
-			z.Color = Red
-			return t.fixNil(z)
-		}
-	} else if z.Left != nil {
+		dir = Left
+	} else {
 		s = z.Left
 		a = z.Left.Right
 		b = z.Left.Left
-		if a != nil && b == nil {
-			s.rotate(Left, t)
-			z.rotate(Right, t)
-			a.Color = z.Color
-			z.Color = s.Color
-			y = t.root
-		} else if a == nil && b == nil {
-			s.Color = Red
-			y = z
-		} else if a == nil && b != nil {
-			z.rotate(Right, t)
-			s.Color = z.Color // s color is black as the removed child
-			b.Color = Black
-			z.Color = Black
-			y = t.root
-		} else if a.isleaf() {
-			s.Color = z.Color
-			a.Color = Red
-			z.Color = Black
-			b.Color = Black
-			z.rotate(Right, t)
-			y = t.root
-		} else {
-			z.rotate(Right, t)
-			s.Color = z.Color
-			z.Color = Red
-			return t.fixNil(z)
-		}
-	} else {
-		// this case is impossible as if z is now leaf node
-		// then the previously deleted child node must be red node
-		//  we should have returned already
+		dir = Right
+	}
+
+	if a != nil && b == nil {
+		//   z          a
+		//    \   ->   / \
+		//     s      z   s
+		//    /
+		//   a
+		s.rotate(!dir, t)
+		z.rotate(dir, t)
+		a.Color = z.Color
+		z.Color = s.Color // black
+		y = t.root
+	} else if a == nil && b == nil {
+		//   z
+		//    \
+		//     s
+		s.Color = Red // s color is black as the removed child
 		y = z
+	} else if a == nil && b != nil {
+		//   z              s
+		//    \            / \
+		//     s    ->    z   b
+		//      \
+		//       b
+		z.rotate(dir, t)
+		s.Color = z.Color // s color is black as the removed child
+		b.Color = Black
+		z.Color = Black
+		y = t.root
+	} else if a.isleaf() {
+		//   z          s
+		//    \   ->   / \
+		//     s      z   b
+		//    / \      \
+		//   a   b      a
+		s.Color = z.Color
+		a.Color = Red
+		b.Color = Black
+		z.Color = Black
+		z.rotate(dir, t)
+		y = t.root
+	} else {
+		//   z                          s
+		//    \             ->         / \
+		//     s   (red)              z   b
+		//    / \                      \   \
+		//   a   b (black)              a   k
+		//  / \ /                      / \
+		// i  j k   (red)             i   j
+		z.rotate(dir, t)
+		s.Color = z.Color
+		z.Color = Red
+		return t.fixNil(z)
 	}
 
 	return y
 }
 
-func (t *RBTree) FixDelete(n *RBnode) {
+// fix n with extra black carried on it
+func (t *RBTree) fixBlack(n *RBnode) {
 	for n.Parent != nil && n.Color == Black {
 		sibling := n.Parent.Left
 		if n == n.Parent.Left {
