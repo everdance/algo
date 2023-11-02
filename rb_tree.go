@@ -177,7 +177,7 @@ func (n *RBnode) successor() *RBnode {
 	return y
 }
 
-func (n *RBnode) transplant(m *RBnode) {
+func (n *RBnode) transplant(m *RBnode, t *RBTree) {
 	if n == nil || m == nil {
 		panic("node is nil")
 	}
@@ -188,6 +188,8 @@ func (n *RBnode) transplant(m *RBnode) {
 		} else {
 			n.Parent.Right = m
 		}
+	} else {
+		t.root = m
 	}
 
 	m.Parent = n.Parent
@@ -199,6 +201,9 @@ func (n *RBnode) transplant(m *RBnode) {
 	if m.Right != nil {
 		m.Right.Parent = m
 	}
+	// remove n from links
+	n.Left = nil
+	n.Right = nil
 }
 
 func (n *RBnode) isBST(min, max int) bool {
@@ -365,7 +370,7 @@ func (t *RBTree) Delete(k int) {
 		} else {
 			z = succ.Parent // succ is moved out to replace n
 			succ.removeBy(succ.Right, t)
-			n.transplant(succ)
+			n.transplant(succ, t)
 		}
 	}
 
@@ -408,7 +413,7 @@ func (t *RBTree) fixStartPoint(z *RBnode) *RBnode {
 			//     s      z   s
 			//    /
 			//   a
-			z.Right.rotateRight(t)
+			s.rotateRight(t)
 			z.rotateLeft(t)
 			a.Color = z.Color
 			z.Color = s.Color // black
@@ -443,7 +448,7 @@ func (t *RBTree) fixStartPoint(z *RBnode) *RBnode {
 			z.rotateLeft(t)
 			y = t.root
 		} else {
-			//   z    (black)               s
+			//   z                          s
 			//    \             ->         / \
 			//     s   (red)              z   b
 			//    / \                      \   \
@@ -451,8 +456,8 @@ func (t *RBTree) fixStartPoint(z *RBnode) *RBnode {
 			//  / \ /                      / \
 			// i  j k   (red)             i   j
 			z.rotateLeft(t)
+			s.Color = z.Color
 			z.Color = Red
-			s.Color = Black
 			return t.fixStartPoint(z)
 		}
 	} else if z.Left != nil {
@@ -460,7 +465,7 @@ func (t *RBTree) fixStartPoint(z *RBnode) *RBnode {
 		a = z.Left.Right
 		b = z.Left.Left
 		if a != nil && b == nil {
-			z.Left.rotateLeft(t)
+			s.rotateLeft(t)
 			z.rotateRight(t)
 			a.Color = z.Color
 			z.Color = s.Color
@@ -483,11 +488,14 @@ func (t *RBTree) fixStartPoint(z *RBnode) *RBnode {
 			y = t.root
 		} else {
 			z.rotateRight(t)
+			s.Color = z.Color
 			z.Color = Red
-			s.Color = Black
 			return t.fixStartPoint(z)
 		}
 	} else {
+		// this case is impossible as if z is now leaf node
+		// then the previously deleted child node must be red node
+		//  we should have returned already
 		y = z
 	}
 
