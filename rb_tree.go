@@ -264,12 +264,12 @@ func (t *RBTree) Insert(k int) {
 
 	n := t.root.insert(k)
 	if n != nil {
-		t.FixInsert(n)
+		t.fixInsert(n)
 	}
 	t.root.Color = Black
 }
 
-func (tree *RBTree) FixInsert(n *RBnode) {
+func (tree *RBTree) fixInsert(n *RBnode) {
 	// n is root node or n's parent is black, then fix is done
 	if n.Parent == nil || n.Parent.Color == Black {
 		return
@@ -308,7 +308,7 @@ func (tree *RBTree) FixInsert(n *RBnode) {
 		uncle.Color = Black
 		n.Parent.Color = Black
 		grandpa.Color = Red
-		tree.FixInsert(grandpa)
+		tree.fixInsert(grandpa)
 		return
 	}
 
