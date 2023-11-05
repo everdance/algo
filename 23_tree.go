@@ -135,6 +135,39 @@ func (n *Node23) is23tree(h int) bool {
 	return ok && n.Middle.is23tree(h)
 }
 
+func (n *Node23) isleaf() bool {
+	return n.Left == nil
+}
+
+func (n *Node23) smallest() *Node23 {
+	for !n.isleaf() {
+		n = n.Left
+	}
+	return n
+}
+
+func (n *Node23) biggest() *Node23 {
+	for !n.isleaf() {
+		n = n.Right
+	}
+	return n
+}
+
+func (n *Node23) del(k int) {
+	// n is leaf
+	if n.isleaf() && n.ntype() == ThreeNode {
+		if k == n.Key {
+			n.Key = *n.Key2
+		}
+		n.Key2 = nil
+		return
+	}
+
+	// if n's parent is three node
+	// combine or borrow with sibling
+	// done
+}
+
 type Tree23 struct {
 	root *Node23
 }
@@ -168,6 +201,53 @@ func (t *Tree23) Insert(k int) {
 	}
 }
 
+func (t *Tree23) Search(k int) *Node23 {
+	return t.root.search(k)
+}
+
 func (t *Tree23) Check() bool {
 	return t.root.is23tree(t.root.height())
+}
+
+func (t *Tree23) Delete(k int) {
+	n := t.root
+	for n != nil {
+		if k == n.Key || (n.Key2 != nil && k == *n.Key2) {
+			break
+		}
+		if k < n.Key {
+			n = n.Left
+			continue
+		}
+		if n.Key2 != nil && k < *n.Key2 {
+			n = n.Middle
+			continue
+		}
+		n = n.Right
+	}
+
+	if n == nil {
+		return
+	}
+
+	if n.isleaf() {
+		n.del(k)
+		return
+	}
+
+	var succ *Node23
+	var movedKey int
+	if k == n.Key {
+		succ = n.Left.biggest()
+		movedKey = succ.Key
+		if succ.ntype() == ThreeNode {
+			movedKey = *succ.Key2
+		}
+		n.Key = movedKey
+	} else {
+		succ = n.Right.smallest()
+		movedKey = succ.Key
+		n.Key2 = &movedKey
+	}
+	succ.del(movedKey)
 }

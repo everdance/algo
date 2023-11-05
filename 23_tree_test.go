@@ -25,6 +25,8 @@ func TestAlgo_23Tree(t *testing.T) {
 
 	for _, k := range keys {
 		tree.Insert(k)
+		n := tree.Search(k)
+		assert.Assert(t, n.Key == k || *n.Key2 == k, "search failed")
 		assert.Assert(t, tree.Check(), "insert violates tree")
 	}
 
