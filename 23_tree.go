@@ -153,19 +153,59 @@ func (n *Node23) biggest() *Node23 {
 	return n
 }
 
-func (n *Node23) del(k int) {
-	// n is leaf
-	if n.isleaf() && n.ntype() == ThreeNode {
-		if k == n.Key {
-			n.Key = *n.Key2
-		}
-		n.Key2 = nil
+const (
+	LeftD   int = 0
+	MiddleD     = 1
+	RightD      = 2
+)
+
+func (n *Node23) branchDir() int {
+	if n == nil || n.Parent == nil {
+		return -1
+	}
+
+	if n == n.Parent.Left {
+		return LeftD
+	} else if n == n.Parent.Right {
+		return RightD
+	} else {
+		return MiddleD
+	}
+}
+
+// add the borrow key to child that need one key to fix
+func (n *Node23) borrow(k int, p *Node23) *Node23 {
+	if n == nil {
+		return &Node23{Key: k, Parent: p}
+	}
+	return nil
+}
+
+// try to fix balance within n and its children
+func (n *Node23) balance(dir int) (*int, bool) {
+	// find a key to borrow from other children
+
+	// or collapse with the other child to make all children height the same
+	return nil, false
+}
+
+func (n *Node23) fix(dir int) {
+	k, ok := n.balance(dir)
+	if !ok {
+		n.Parent.fix(n.branchDir())
 		return
 	}
 
-	// if n's parent is three node
-	// combine or borrow with sibling
-	// done
+	if k != nil {
+		switch dir {
+		case LeftD:
+			n.Left = n.Left.borrow(*k, n)
+		case RightD:
+			n.Right = n.Right.borrow(*k, n)
+		case MiddleD:
+			n.Middle = n.Middle.borrow(*k, n)
+		}
+	}
 }
 
 type Tree23 struct {
@@ -230,24 +270,47 @@ func (t *Tree23) Delete(k int) {
 		return
 	}
 
-	if n.isleaf() {
-		n.del(k)
+	// choose a key from leaf to do balance from bottom
+	x, xkey := n, k
+	if !n.isleaf() {
+		if k == n.Key {
+			x = n.Left.biggest()
+			xkey = x.Key
+			if x.ntype() == ThreeNode {
+				xkey = *x.Key2
+			}
+			n.Key = xkey
+		} else {
+			x = n.Right.smallest()
+			xkey = x.Key
+			n.Key2 = &xkey
+		}
+	}
+
+	if x.ntype() == ThreeNode {
+		if xkey == x.Key {
+			x.Key = *x.Key2
+		}
+		x.Key2 = nil
 		return
 	}
 
-	var succ *Node23
-	var movedKey int
-	if k == n.Key {
-		succ = n.Left.biggest()
-		movedKey = succ.Key
-		if succ.ntype() == ThreeNode {
-			movedKey = *succ.Key2
-		}
-		n.Key = movedKey
-	} else {
-		succ = n.Right.smallest()
-		movedKey = succ.Key
-		n.Key2 = &movedKey
+	parent := x.Parent
+	if parent == nil {
+		t.root = nil
+		return
 	}
-	succ.del(movedKey)
+
+	dir := x.branchDir()
+	x.Parent = nil
+	switch dir {
+	case LeftD:
+		parent.Left = nil
+	case RightD:
+		parent.Right = nil
+	case MiddleD:
+		parent.Middle = nil
+	}
+
+	parent.fix(dir)
 }
