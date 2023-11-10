@@ -30,10 +30,10 @@ func TestAlgo_23Tree(t *testing.T) {
 		assert.Assert(t, tree.Check(), "insert violates tree")
 	}
 
-	// for _, k := range keys {
-	// 	tree.Delete(k)
-	// 	assert.Assert(t, tree.Check(), "delete rb tree")
-	// }
+	for _, k := range keys {
+		tree.Delete(k)
+		assert.Assert(t, tree.Check(), "delete violates tree")
+	}
 
-	// assert.Assert(t, tree.IsEmpty())
+	assert.Assert(t, tree.IsEmpty())
 }

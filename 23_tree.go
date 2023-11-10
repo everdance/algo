@@ -233,10 +233,23 @@ func (n *Node23) collapse(dir int) {
 	child.Right = nil
 }
 
+func make23Node(k int, left, right, parent *Node23) *Node23 {
+	n := &Node23{Key: k, Left: left, Right: right, Parent: parent}
+	if left != nil {
+		left.Parent = n
+	}
+	if right != nil {
+		right.Parent = n
+	}
+	return n
+}
+
 func (n *Node23) rotate(dir int) {
 	var xLeft, xRight *Node23
 	var rotateDir int
 
+	// for left or mid child misses one level
+	// we rotate
 	switch dir {
 	case LeftD:
 		rotateDir = LeftD
@@ -264,22 +277,39 @@ func (n *Node23) rotate(dir int) {
 	}
 
 	if rotateDir == LeftD {
+		//        n                   p
+		//      /   \					      /   \
+		//     hj    p r   ->      n     r
+		//          / | \				  / \   / \
+		//         o  q  s			 hj  o q   s
+
+		//       n  u                q  u
+		//      /  \  \     			  / \   \
+		//     hj  qs    w    ->	 h   s    w
+		//        / |\	 /\				/ \  /\   /\
+		//       p  r t v  x			hj p r t  v x
 		if xRight.ntype() == ThreeNode {
-			node := &Node23{Key: k, Left: xLeft, Right: xRight.Left, Parent: n}
+			node := make23Node(k, xLeft, xRight, n)
 			if dir == LeftD {
 				n.Left = node
 			} else {
 				n.Middle = node
 			}
-			node.Left.Parent = node
-			node.Right.Parent = node
 			n.Key = xRight.Key
 			xRight.Left = xRight.Middle
 			xRight.to2node(RightD)
 		} else {
+			//       n s                  s
+			//      / \  \					     /  \
+			//     hj  q   v   ->      n q    v
+			//        / \	 /\			    / | \  / \
+			//       p   r u w			 hj p  r u  w
+
 			xRight.Middle = xRight.Left
 			xRight.Left = xLeft
-			xLeft.Parent = xRight
+			if xLeft != nil {
+				xLeft.Parent = xRight
+			}
 			xRight.Key2 = &xRight.Key
 			xRight.Key = k
 			n.Left = n.Middle
@@ -287,17 +317,17 @@ func (n *Node23) rotate(dir int) {
 		}
 	} else {
 		if xLeft.ntype() == ThreeNode {
-			node := &Node23{Key: k, Left: xLeft.Right, Right: xRight, Parent: n}
+			node := make23Node(k, xLeft.Right, xRight, n)
 			n.Right = node
-			node.Left.Parent = node
-			node.Right.Parent = node
 			n.Key2 = xLeft.Key2
 			xLeft.Right = xLeft.Middle
 			xLeft.to2node(LeftD)
 		} else {
 			xLeft.Middle = xLeft.Right
 			xLeft.Right = xRight
-			xRight.Parent = xLeft
+			if xRight != nil {
+				xRight.Parent = xLeft
+			}
 			xLeft.Key2 = n.Key2
 			n.Right = n.Middle
 			n.to2node(LeftD)
@@ -375,6 +405,10 @@ func (t *Tree23) Search(k int) *Node23 {
 
 func (t *Tree23) Check() bool {
 	return t.root.is23tree(t.root.height())
+}
+
+func (t *Tree23) IsEmpty() bool {
+	return t.root == nil
 }
 
 func (t *Tree23) Delete(k int) {

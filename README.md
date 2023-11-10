@@ -6,7 +6,7 @@ algorithms playground
 ## roadmap
 - [x] BST
 - [x] RB BST
-- [ ] 2/3 BST
+- [x] 2/3 BST
 - [ ] LLRB BST
 - [ ] AVL BST
 - [ ] B+ tree
