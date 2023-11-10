@@ -46,6 +46,19 @@ func (n *Node23) search(k int) *Node23 {
 	}
 }
 
+func (n *Node23) to2node(dir int) {
+	if n.ntype() == TwoNode {
+		panic("n is already two node")
+	}
+
+	if dir == RightD {
+		n.Key = *n.Key2
+	}
+
+	n.Middle = nil
+	n.Key2 = nil
+}
+
 func (n *Node23) to3node(k int, child *Node23) {
 	if n.ntype() == ThreeNode {
 		panic("n is already three node")
@@ -173,39 +186,154 @@ func (n *Node23) branchDir() int {
 	}
 }
 
-// add the borrow key to child that need one key to fix
-func (n *Node23) borrow(k int, p *Node23) *Node23 {
-	if n == nil {
-		return &Node23{Key: k, Parent: p}
+func (n *Node23) getChild(dir int) *Node23 {
+	switch dir {
+	case LeftD:
+		return n.Left
+	case MiddleD:
+		return n.Middle
+	default:
+		return n.Right
 	}
-	return nil
 }
 
-// try to fix balance within n and its children
-func (n *Node23) balance(dir int) (*int, bool) {
-	// find a key to borrow from other children
+// collapse 2 node n with the two node child
+// so both children has same height
+func (n *Node23) collapse(dir int) {
+	if n.ntype() == ThreeNode {
+		panic("must be two node to collapse")
+	}
 
-	// or collapse with the other child to make all children height the same
-	return nil, false
+	child := n.getChild(dir)
+	if child.ntype() == ThreeNode {
+		panic("child must be two node to collapse")
+	}
+
+	if dir == LeftD {
+		n.Key2 = &n.Key
+		n.Key = child.Key
+		n.Left = child.Left
+		n.Middle = child.Right
+	} else {
+		n.Key2 = &child.Key
+		n.Middle = child.Left
+		n.Right = child.Right
+	}
+
+	if n.Middle != nil {
+		n.Middle.Parent = n
+		n.Left.Parent = n
+	} else {
+		n.Left = nil
+		n.Right = nil
+	}
+
+	child.Parent = nil
+	child.Left = nil
+	child.Right = nil
 }
 
-func (n *Node23) fix(dir int) {
-	k, ok := n.balance(dir)
-	if !ok {
-		n.Parent.fix(n.branchDir())
+func (n *Node23) rotate(dir int) {
+	var xLeft, xRight *Node23
+	var rotateDir int
+
+	switch dir {
+	case LeftD:
+		rotateDir = LeftD
+		xLeft = n.Left
+		xRight = n.Right
+		if n.ntype() == ThreeNode {
+			xRight = n.Middle
+		}
+	case MiddleD:
+		rotateDir = LeftD
+		xLeft = n.Middle
+		xRight = n.Right
+	default:
+		rotateDir = RightD
+		xRight = n.Right
+		xLeft = n.Left
+		if n.ntype() == ThreeNode {
+			xLeft = n.Middle
+		}
+	}
+
+	k := n.Key
+	if n.ntype() == ThreeNode {
+		k = *n.Key2
+	}
+
+	if rotateDir == LeftD {
+		if xRight.ntype() == ThreeNode {
+			node := &Node23{Key: k, Left: xLeft, Right: xRight.Left, Parent: n}
+			if dir == LeftD {
+				n.Left = node
+			} else {
+				n.Middle = node
+			}
+			node.Left.Parent = node
+			node.Right.Parent = node
+			n.Key = xRight.Key
+			xRight.Left = xRight.Middle
+			xRight.to2node(RightD)
+		} else {
+			xRight.Middle = xRight.Left
+			xRight.Left = xLeft
+			xLeft.Parent = xRight
+			xRight.Key2 = &xRight.Key
+			xRight.Key = k
+			n.Left = n.Middle
+			n.to2node(RightD)
+		}
+	} else {
+		if xLeft.ntype() == ThreeNode {
+			node := &Node23{Key: k, Left: xLeft.Right, Right: xRight, Parent: n}
+			n.Right = node
+			node.Left.Parent = node
+			node.Right.Parent = node
+			n.Key2 = xLeft.Key2
+			xLeft.Right = xLeft.Middle
+			xLeft.to2node(LeftD)
+		} else {
+			xLeft.Middle = xLeft.Right
+			xLeft.Right = xRight
+			xRight.Parent = xLeft
+			xLeft.Key2 = n.Key2
+			n.Right = n.Middle
+			n.to2node(LeftD)
+		}
+	}
+}
+
+// child in dir is one level less than n's other children
+func (n *Node23) balance(dir int) {
+	// reached root
+	if n == nil {
 		return
 	}
 
-	if k != nil {
-		switch dir {
-		case LeftD:
-			n.Left = n.Left.borrow(*k, n)
-		case RightD:
-			n.Right = n.Right.borrow(*k, n)
-		case MiddleD:
-			n.Middle = n.Middle.borrow(*k, n)
+	var nbDir int
+	if dir == LeftD {
+		nbDir = RightD
+		if n.ntype() == ThreeNode {
+			nbDir = MiddleD
+		}
+	} else if dir == MiddleD {
+		nbDir = RightD
+	} else {
+		nbDir = LeftD
+		if n.ntype() == ThreeNode {
+			nbDir = MiddleD
 		}
 	}
+
+	if n.ntype() == ThreeNode || n.getChild(nbDir).ntype() == ThreeNode {
+		n.rotate(dir)
+		return
+	}
+
+	n.collapse(nbDir)
+	n.Parent.balance(n.branchDir())
 }
 
 type Tree23 struct {
@@ -312,5 +440,5 @@ func (t *Tree23) Delete(k int) {
 		parent.Middle = nil
 	}
 
-	parent.fix(dir)
+	parent.balance(dir)
 }
