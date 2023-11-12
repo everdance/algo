@@ -13,10 +13,10 @@ type Node struct {
 	Right  *Node
 }
 
-func (n *Node) preOrder() string {
+func (n *Node) preorder() string {
 	if n != nil {
-		children := fmt.Sprintf("%s %s", n.Left.preOrder(),
-			n.Right.preOrder())
+		children := fmt.Sprintf("%s %s", n.Left.preorder(),
+			n.Right.preorder())
 		children = strings.Trim(children, " ")
 
 		if children == "" {
@@ -151,7 +151,7 @@ func (t *BST) IsEmpty() bool { return t.root == nil }
 
 func (t *BST) Check() bool { return t.root.isBST(math.MinInt, math.MaxInt) }
 
-func (t *BST) Visit() string { return t.root.preOrder() }
+func (t *BST) Visit() string { return t.root.preorder() }
 
 func (t *BST) Search(k int) *Node { return t.root.search(k) }
 

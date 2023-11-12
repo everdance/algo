@@ -18,12 +18,14 @@ func TestAlgo_BST(t *testing.T) {
 		k := rand.Intn(1000)
 		keys = append(keys, k)
 		tree.Insert(k)
+		assert.Assert(t, tree.Search(k).Key == k)
 		assert.Assert(t, tree.Check())
 		i++
 	}
 
 	for _, k := range keys {
 		tree.Delete(k)
+		assert.Assert(t, tree.Search(k) == nil)
 		assert.Assert(t, tree.Check())
 	}
 

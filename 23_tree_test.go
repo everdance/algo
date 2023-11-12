@@ -5,20 +5,12 @@ import (
 	"math/rand"
 	"testing"
 
+	"golang.org/x/exp/slices"
 	"gotest.tools/v3/assert"
 )
 
-func TestAlgo_RBTree(t *testing.T) {
-	tree := algo.RBTree{}
-	assert.Assert(t, tree.IsEmpty())
-
-	tree.Insert(1)
-	assert.Assert(t, !tree.IsEmpty())
-	assert.Assert(t, tree.Search(1).Key == 1)
-
-	tree.Delete(1)
-	assert.Assert(t, tree.IsEmpty())
-	assert.Assert(t, tree.Check())
+func TestAlgo_23Tree(t *testing.T) {
+	tree := &algo.Tree23{}
 
 	i := 0
 	keys := []int{}
@@ -31,13 +23,13 @@ func TestAlgo_RBTree(t *testing.T) {
 
 	for _, k := range keys {
 		tree.Insert(k)
-		assert.Assert(t, tree.Search(k).Key == k)
+		n := tree.Search(k)
+		assert.Assert(t, slices.Contains(n.Keys, k), "search failed")
 		assert.Assert(t, tree.Check(), "insert violates tree")
 	}
 
 	for _, k := range keys {
 		tree.Delete(k)
-		assert.Assert(t, tree.Search(k) == nil)
 		assert.Assert(t, tree.Check(), "delete violates tree")
 	}
 
