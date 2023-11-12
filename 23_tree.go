@@ -1,5 +1,11 @@
 package algo
 
+import (
+	"fmt"
+	"math"
+	"strings"
+)
+
 type NodeType bool
 
 const (
@@ -8,8 +14,7 @@ const (
 )
 
 type Node23 struct {
-	Key    int
-	Key2   *int
+	Keys   []int
 	Left   *Node23
 	Middle *Node23
 	Right  *Node23
@@ -17,11 +22,33 @@ type Node23 struct {
 }
 
 func (n *Node23) ntype() NodeType {
-	if n.Key2 != nil {
+	if len(n.Keys) > 1 {
 		return ThreeNode
 	}
 
 	return TwoNode
+}
+
+func (n *Node23) preorder() string {
+	if n != nil {
+		self := fmt.Sprintf("%d", n.Keys[0])
+		children := fmt.Sprintf("%s %s", n.Left.preorder(), n.Right.preorder())
+
+		if n.ntype() == ThreeNode {
+			self = fmt.Sprintf("<%d, %d>", n.Keys[0], n.Keys[1])
+			children = fmt.Sprintf("%s %s %s", n.Left.preorder(),
+				n.Middle.preorder(), n.Right.preorder())
+		}
+		children = strings.Trim(children, " ")
+
+		if children == "" {
+			return self
+		}
+
+		return fmt.Sprintf("%s {%s}", self, children)
+	}
+
+	return ""
 }
 
 func (n *Node23) search(k int) *Node23 {
@@ -29,14 +56,14 @@ func (n *Node23) search(k int) *Node23 {
 		return nil
 	}
 
-	if k < n.Key {
+	if k < n.Keys[0] {
 		return n.Left.search(k)
-	} else if k > n.Key {
-		if n.Key2 != nil {
-			if k < *n.Key2 {
+	} else if k > n.Keys[0] {
+		if n.ntype() == ThreeNode {
+			if k < n.Keys[1] {
 				return n.Middle.search(k)
 			}
-			if k == *n.Key2 {
+			if k == n.Keys[1] {
 				return n
 			}
 		}
@@ -46,17 +73,18 @@ func (n *Node23) search(k int) *Node23 {
 	}
 }
 
-func (n *Node23) to2node(dir int) {
+func (n *Node23) to2node(keep int) {
 	if n.ntype() == TwoNode {
 		panic("n is already two node")
 	}
 
-	if dir == RightD {
-		n.Key = *n.Key2
+	if keep == RightD {
+		n.Keys = n.Keys[1:]
+	} else {
+		n.Keys = n.Keys[:1]
 	}
 
 	n.Middle = nil
-	n.Key2 = nil
 }
 
 func (n *Node23) to3node(k int, child *Node23) {
@@ -64,13 +92,11 @@ func (n *Node23) to3node(k int, child *Node23) {
 		panic("n is already three node")
 	}
 
-	if n.Key > k {
-		k1 := n.Key
-		n.Key2 = &k1
-		n.Key = k
+	if n.Keys[0] > k {
+		n.Keys = []int{k, n.Keys[0]}
 		n.Middle = child
 	} else {
-		n.Key2 = &k
+		n.Keys = append(n.Keys, k)
 		n.Middle = n.Right
 		n.Right = child
 	}
@@ -79,7 +105,7 @@ func (n *Node23) to3node(k int, child *Node23) {
 	}
 }
 
-// addKey middle key from child, with right splitted new child c
+// add middle key from child, with right splitted new child c
 // returns the top node in the tree where change stop at
 func (n *Node23) addKey(k int, c *Node23) *Node23 {
 	if n.ntype() == TwoNode {
@@ -88,42 +114,36 @@ func (n *Node23) addKey(k int, c *Node23) *Node23 {
 	}
 
 	var splitted *Node23
-	left, mid, right := n.Key, k, *n.Key2
-	if k < n.Key { // added from left child
+	left, mid, right := n.Keys[0], k, n.Keys[1]
+	if k < n.Keys[0] { // added from left child
 		left = k
-		mid = n.Key
-		splitted = &Node23{Key: right, Left: n.Middle, Right: n.Right}
-		n.Key = left
+		mid = n.Keys[0]
+		splitted = make23Node(right, n.Middle, n.Right, n.Parent)
+		n.Keys = []int{left}
 		n.Right = c
-	} else if k > *n.Key2 { // added from right child
-		mid = *n.Key2
+	} else if k > n.Keys[1] { // added from right child
+		mid = n.Keys[1]
 		right = k
-		splitted = &Node23{Key: right, Left: n.Right, Right: c}
+		splitted = make23Node(right, n.Right, c, n.Parent)
 		n.Right = n.Middle
 	} else { // added from middle child
-		splitted = &Node23{Key: right, Left: c, Right: n.Right}
+		splitted = make23Node(right, c, n.Right, n.Parent)
 		n.Right = n.Middle
 	}
 
-	if splitted.Left != nil {
-		splitted.Left.Parent = splitted
-	}
-	if splitted.Right != nil {
-		splitted.Right.Parent = splitted
-	}
 	if n.Right != nil {
 		n.Right.Parent = n
 	}
 	n.Middle = nil
-	n.Key2 = nil
+	n.Keys = n.Keys[:1]
 
 	if n.Parent != nil {
 		return n.Parent.addKey(mid, splitted)
 	}
 	// reached tree root
-	newRoot := &Node23{Key: mid, Left: n, Right: splitted}
+	newRoot := make23Node(mid, n, splitted, nil)
 	n.Parent = newRoot
-	splitted.Parent = newRoot
+
 	return newRoot
 }
 
@@ -136,16 +156,26 @@ func (n *Node23) height() int {
 	return h
 }
 
-func (n *Node23) is23tree(h int) bool {
+func (n *Node23) is23tree(h, low, high int) bool {
 	if n == nil {
 		return h == 0
 	}
+
 	h--
-	ok := n.Left.is23tree(h) && n.Right.is23tree(h)
-	if n.ntype() == TwoNode {
-		return ok
+
+	for _, k := range n.Keys {
+		if k < low || k > high {
+			return false
+		}
 	}
-	return ok && n.Middle.is23tree(h)
+
+	if n.ntype() == TwoNode {
+		return n.Left.is23tree(h, low, n.Keys[0]) && n.Right.is23tree(h, n.Keys[0], high)
+	}
+
+	return n.Left.is23tree(h, low, n.Keys[0]) &&
+		n.Middle.is23tree(h, n.Keys[0], n.Keys[1]) &&
+		n.Right.is23tree(h, n.Keys[1], high)
 }
 
 func (n *Node23) isleaf() bool {
@@ -210,12 +240,11 @@ func (n *Node23) collapse(dir int) {
 	}
 
 	if dir == LeftD {
-		n.Key2 = &n.Key
-		n.Key = child.Key
+		n.Keys = []int{child.Keys[0], n.Keys[0]}
 		n.Left = child.Left
 		n.Middle = child.Right
 	} else {
-		n.Key2 = &child.Key
+		n.Keys = append(n.Keys, child.Keys[0])
 		n.Middle = child.Left
 		n.Right = child.Right
 	}
@@ -223,6 +252,7 @@ func (n *Node23) collapse(dir int) {
 	if n.Middle != nil {
 		n.Middle.Parent = n
 		n.Left.Parent = n
+		n.Right.Parent = n
 	} else {
 		n.Left = nil
 		n.Right = nil
@@ -234,7 +264,7 @@ func (n *Node23) collapse(dir int) {
 }
 
 func make23Node(k int, left, right, parent *Node23) *Node23 {
-	n := &Node23{Key: k, Left: left, Right: right, Parent: parent}
+	n := &Node23{Keys: []int{k}, Left: left, Right: right, Parent: parent}
 	if left != nil {
 		left.Parent = n
 	}
@@ -271,12 +301,11 @@ func (n *Node23) rotate(dir int) {
 		}
 	}
 
-	k := n.Key
-	if n.ntype() == ThreeNode {
-		k = *n.Key2
-	}
-
+	k := n.Keys[0]
 	if rotateDir == LeftD {
+		if n.ntype() == ThreeNode && dir == MiddleD {
+			k = n.Keys[1]
+		}
 		//        n                   p
 		//      /   \					      /   \
 		//     hj    p r   ->      n     r
@@ -285,17 +314,21 @@ func (n *Node23) rotate(dir int) {
 
 		//       n  u                q  u
 		//      /  \  \     			  / \   \
-		//     hj  qs    w    ->	 h   s    w
+		//     hj  qs    w    ->	 n   s    w
 		//        / |\	 /\				/ \  /\   /\
 		//       p  r t v  x			hj p r t  v x
 		if xRight.ntype() == ThreeNode {
-			node := make23Node(k, xLeft, xRight, n)
+			node := make23Node(k, xLeft, xRight.Left, n)
 			if dir == LeftD {
 				n.Left = node
 			} else {
 				n.Middle = node
 			}
-			n.Key = xRight.Key
+			if k == n.Keys[0] {
+				n.Keys[0] = xRight.Keys[0]
+			} else {
+				n.Keys[1] = xRight.Keys[0]
+			}
 			xRight.Left = xRight.Middle
 			xRight.to2node(RightD)
 		} else {
@@ -310,16 +343,27 @@ func (n *Node23) rotate(dir int) {
 			if xLeft != nil {
 				xLeft.Parent = xRight
 			}
-			xRight.Key2 = &xRight.Key
-			xRight.Key = k
-			n.Left = n.Middle
-			n.to2node(RightD)
+			xRight.Keys = []int{k, xRight.Keys[0]}
+			if dir == LeftD {
+				n.Left = n.Middle
+				n.to2node(RightD)
+			} else {
+				n.to2node(LeftD)
+			}
 		}
 	} else {
+		if n.ntype() == ThreeNode {
+			k = n.Keys[1]
+		}
+
 		if xLeft.ntype() == ThreeNode {
 			node := make23Node(k, xLeft.Right, xRight, n)
 			n.Right = node
-			n.Key2 = xLeft.Key2
+			if n.ntype() == ThreeNode {
+				n.Keys[1] = xLeft.Keys[1]
+			} else {
+				n.Keys[0] = xLeft.Keys[1]
+			}
 			xLeft.Right = xLeft.Middle
 			xLeft.to2node(LeftD)
 		} else {
@@ -328,7 +372,7 @@ func (n *Node23) rotate(dir int) {
 			if xRight != nil {
 				xRight.Parent = xLeft
 			}
-			xLeft.Key2 = n.Key2
+			xLeft.Keys = append(xLeft.Keys, k)
 			n.Right = n.Middle
 			n.to2node(LeftD)
 		}
@@ -357,7 +401,8 @@ func (n *Node23) balance(dir int) {
 		}
 	}
 
-	if n.ntype() == ThreeNode || n.getChild(nbDir).ntype() == ThreeNode {
+	nbCihld := n.getChild(nbDir)
+	if n.ntype() == ThreeNode || (nbCihld != nil && nbCihld.ntype() == ThreeNode) {
 		n.rotate(dir)
 		return
 	}
@@ -372,21 +417,21 @@ type Tree23 struct {
 
 func (t *Tree23) Insert(k int) {
 	if t.root == nil {
-		t.root = &Node23{Key: k}
+		t.root = &Node23{Keys: []int{k}}
 		return
 	}
 
 	// find the leaf node to insert
 	n := t.root
 	for n.Left != nil {
-		if k == n.Key || (n.Key2 != nil && k == *n.Key2) {
+		if k == n.Keys[0] || (len(n.Keys) > 1 && k == n.Keys[1]) {
 			return
 		}
-		if k < n.Key {
+		if k < n.Keys[0] {
 			n = n.Left
 			continue
 		}
-		if n.Key2 != nil && k < *n.Key2 {
+		if len(n.Keys) > 1 && k < n.Keys[1] {
 			n = n.Middle
 			continue
 		}
@@ -404,7 +449,7 @@ func (t *Tree23) Search(k int) *Node23 {
 }
 
 func (t *Tree23) Check() bool {
-	return t.root.is23tree(t.root.height())
+	return t.root.is23tree(t.root.height(), math.MinInt32, math.MaxInt64)
 }
 
 func (t *Tree23) IsEmpty() bool {
@@ -414,14 +459,14 @@ func (t *Tree23) IsEmpty() bool {
 func (t *Tree23) Delete(k int) {
 	n := t.root
 	for n != nil {
-		if k == n.Key || (n.Key2 != nil && k == *n.Key2) {
+		if k == n.Keys[0] || (len(n.Keys) > 1 && k == n.Keys[1]) {
 			break
 		}
-		if k < n.Key {
+		if k < n.Keys[0] {
 			n = n.Left
 			continue
 		}
-		if n.Key2 != nil && k < *n.Key2 {
+		if len(n.Keys) > 1 && k < n.Keys[1] {
 			n = n.Middle
 			continue
 		}
@@ -435,25 +480,26 @@ func (t *Tree23) Delete(k int) {
 	// choose a key from leaf to do balance from bottom
 	x, xkey := n, k
 	if !n.isleaf() {
-		if k == n.Key {
+		if k == n.Keys[0] {
 			x = n.Left.biggest()
-			xkey = x.Key
+			xkey = x.Keys[0]
 			if x.ntype() == ThreeNode {
-				xkey = *x.Key2
+				xkey = x.Keys[1]
 			}
-			n.Key = xkey
+			n.Keys[0] = xkey
 		} else {
 			x = n.Right.smallest()
-			xkey = x.Key
-			n.Key2 = &xkey
+			xkey = x.Keys[0]
+			n.Keys[1] = xkey
 		}
 	}
 
 	if x.ntype() == ThreeNode {
-		if xkey == x.Key {
-			x.Key = *x.Key2
+		if xkey == x.Keys[0] {
+			x.Keys = x.Keys[1:]
+		} else {
+			x.Keys = x.Keys[:1]
 		}
-		x.Key2 = nil
 		return
 	}
 
@@ -475,4 +521,8 @@ func (t *Tree23) Delete(k int) {
 	}
 
 	parent.balance(dir)
+}
+
+func (t *Tree23) Visit() string {
+	return t.root.preorder()
 }

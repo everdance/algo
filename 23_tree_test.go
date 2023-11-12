@@ -5,14 +5,12 @@ import (
 	"math/rand"
 	"testing"
 
+	"golang.org/x/exp/slices"
 	"gotest.tools/v3/assert"
 )
 
 func TestAlgo_23Tree(t *testing.T) {
 	tree := &algo.Tree23{}
-
-	tree.Insert(1)
-	assert.Assert(t, tree.Check())
 
 	i := 0
 	keys := []int{}
@@ -26,7 +24,7 @@ func TestAlgo_23Tree(t *testing.T) {
 	for _, k := range keys {
 		tree.Insert(k)
 		n := tree.Search(k)
-		assert.Assert(t, n.Key == k || *n.Key2 == k, "search failed")
+		assert.Assert(t, slices.Contains(n.Keys, k), "search failed")
 		assert.Assert(t, tree.Check(), "insert violates tree")
 	}
 
