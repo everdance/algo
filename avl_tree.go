@@ -158,6 +158,18 @@ func (n *AvlNode) leftRotate() {
 	n.p.updateh()
 }
 
+func (n *AvlNode) succ() *AvlNode {
+	if n.r != nil {
+		s := n.r
+		for s.l != nil {
+			s = s.l
+		}
+		return s
+	}
+
+	return n.p
+}
+
 func (n *AvlNode) rotate() *AvlNode {
 	hl, hr := n.l.height(), n.r.height()
 	if hl > hr {
@@ -215,6 +227,77 @@ func (t *AvlTree) Insert(k int) {
 	}
 
 	if top := node.balance(); top != nil {
+		t.root = top
+	}
+}
+
+func (t *AvlTree) Delete(k int) {
+	n := t.root
+	for n != nil {
+		if n.k == k {
+			break
+		}
+
+		if n.k > k {
+			n = n.l
+		} else {
+			n = n.r
+		}
+	}
+
+	if n == nil {
+		return
+	}
+
+	var succ *AvlNode
+	bottom := n
+	if n.l == nil && n.r == nil {
+		bottom = n.p
+	} else if n.l == nil {
+		bottom = n.r
+		succ = n.r
+	} else if n.r == nil {
+		bottom = n.l
+		succ = n.l
+	} else {
+		succ = n.succ()
+		bottom = succ.r
+		if bottom == nil {
+			if succ == n.r {
+				bottom = succ
+			} else {
+				bottom = succ.p
+			}
+		}
+	}
+
+	if succ != nil {
+		succ.p = n.p
+		succ.l = n.l
+		succ.r = n.r
+		if succ.l != nil && succ != n.r {
+			succ.l.p = succ
+		}
+		if succ.r != nil {
+			succ.r.p = succ
+		}
+	}
+
+	if n.p != nil {
+		if n == n.p.l {
+			n.p.l = succ
+		} else {
+			n.p.r = succ
+		}
+	}
+
+	n.p = nil
+	if bottom == nil {
+		t.root = nil
+		return
+	}
+
+	if top := bottom.balance(); top != nil {
 		t.root = top
 	}
 }
