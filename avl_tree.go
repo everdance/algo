@@ -39,6 +39,14 @@ func (n *AvlNode) isAvl(min, max int) bool {
 		return false
 	}
 
+	if n.l != nil && n.l.p != n {
+		return false
+	}
+
+	if n.r != nil && n.r.p != n {
+		return false
+	}
+
 	return n.k > min && n.k < max && n.balanced() &&
 		n.l.isAvl(min, n.k) && n.r.isAvl(n.k, max)
 }
@@ -192,8 +200,6 @@ func (n *AvlNode) balance() *AvlNode {
 
 	if !n.balanced() {
 		n = n.rotate()
-	} else if n.p.heightmatch() {
-		return nil
 	}
 
 	if n.p != nil {
@@ -269,18 +275,29 @@ func (t *AvlTree) Delete(k int) {
 				bottom = succ.p
 			}
 		}
+		if succ != n.r {
+			if succ.r != nil {
+				succ.r.p = succ.p
+			}
+			succ.p.l = succ.r
+		}
 	}
 
 	if succ != nil {
 		succ.p = n.p
-		succ.l = n.l
-		succ.r = n.r
-		if succ.l != nil && succ != n.r {
+		if succ != n.l {
+			succ.l = n.l
+		}
+		if succ != n.r {
+			succ.r = n.r
+		}
+		if succ.l != nil {
 			succ.l.p = succ
 		}
 		if succ.r != nil {
 			succ.r.p = succ
 		}
+		succ.updateh()
 	}
 
 	if n.p != nil {
@@ -292,6 +309,8 @@ func (t *AvlTree) Delete(k int) {
 	}
 
 	n.p = nil
+	n.l = nil
+	n.r = nil
 	if bottom == nil {
 		t.root = nil
 		return
