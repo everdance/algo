@@ -8,7 +8,7 @@ algorithms playground
 - [x] RB BST
 - [x] 2/3 BST
 - [ ] LLRB BST
-- [ ] AVL BST
+- [x] AVL BST
 - [ ] B+ tree
 - [ ] Concurrent RB BST
 - [ ] Concurrent B+ tree
