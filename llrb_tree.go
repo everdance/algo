@@ -29,7 +29,7 @@ func (n *lrbNode) preorder() string {
 	}
 
 	if n == nullNode {
-		return "" // NIL"
+		return "NIL"
 	}
 
 	children := fmt.Sprintf("%s %s", n.l.preorder(), n.r.preorder())
@@ -232,7 +232,6 @@ func (t *LLRBTree) fixDel(n *lrbNode) {
 	}
 
 	for n.p != nil && n.c == Black {
-		fmt.Println("fix on ", n, " in ", n.p.preorder())
 		p := n.p
 		if n == p.l {
 			s := p.r
@@ -306,7 +305,6 @@ func (t *LLRBTree) Delete(k int) {
 		return
 	}
 
-	fmt.Printf("DEL %v %+v\n", k, n)
 	color := n.c
 	var succ, start *lrbNode
 	// n can only be a leaf node, or has only left red child
