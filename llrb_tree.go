@@ -253,6 +253,7 @@ func (t *LLRBTree) fixDel(n *lrbNode) {
 			n = s.l
 			if c == Red {
 				p.l.c = Red
+				// fix double left red
 				if p.l.l.c == Red {
 					t.fix(p.l)
 				}
@@ -262,12 +263,6 @@ func (t *LLRBTree) fixDel(n *lrbNode) {
 	}
 
 	n.c = Black
-	if n.p == nil {
-		t.root = n
-		if n == nullNode {
-			t.root = nil
-		}
-	}
 }
 
 func (t *LLRBTree) Check() bool {
@@ -279,7 +274,7 @@ func (t *LLRBTree) Visit() string {
 }
 
 func (t *LLRBTree) IsEmpty() bool {
-	return t.root == nil
+	return t.root == nil || t.root == nullNode
 }
 
 func (t *LLRBTree) Search(k int) bool {
@@ -288,7 +283,7 @@ func (t *LLRBTree) Search(k int) bool {
 }
 
 func (t *LLRBTree) Insert(k int) {
-	if t.root == nil {
+	if t.root == nil || t.root == nullNode {
 		t.root = &lrbNode{k: k, c: Black, l: nullNode, r: nullNode}
 		return
 	}
