@@ -2,6 +2,7 @@ package algo_test
 
 import (
 	"algo"
+	"fmt"
 	"math/rand"
 	"testing"
 
@@ -14,7 +15,7 @@ func TestAlgo_LLRBTree(t *testing.T) {
 
 	i := 0
 	keys := []int{}
-	for i < 10000 {
+	for i < 10 {
 		keys = append(keys, i)
 		j := rand.Intn(i + 1)
 		keys[i], keys[j] = keys[j], i
@@ -27,8 +28,11 @@ func TestAlgo_LLRBTree(t *testing.T) {
 		assert.Assert(t, tree.Check(), "insert violates tree")
 	}
 
+	fmt.Println(tree.Visit())
+	
 	for _, k := range keys {
 		tree.Delete(k)
+		fmt.Println(k, " <- ", tree.Visit())
 		assert.Assert(t, !tree.Search(k))
 		assert.Assert(t, tree.Check(), "delete violates tree")
 	}

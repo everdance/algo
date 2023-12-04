@@ -20,11 +20,16 @@ type lrbNode struct {
 
 var nullNode = &lrbNode{
 	c: Black,
+	k: math.MaxInt,
 }
 
 func (n *lrbNode) preorder() string {
-	if n == nullNode || n == nil {
+	if n == nil {
 		return ""
+	}
+
+	if n == nullNode {
+		return "" // NIL"
 	}
 
 	children := fmt.Sprintf("%s %s", n.l.preorder(), n.r.preorder())
@@ -86,6 +91,10 @@ func (n *lrbNode) getchild(d Direction) *lrbNode {
 func (n *lrbNode) rotate(dir Direction) {
 	child := n.getchild(!dir)
 
+	if child == nullNode {
+		panic(fmt.Sprintf("cannot rotate %s to %v", n.preorder(), dir))
+	}
+
 	if dir == Right {
 		n.l = child.r
 		n.l.p = n
@@ -110,8 +119,12 @@ func (n *lrbNode) rotate(dir Direction) {
 	}
 }
 
+func (n *lrbNode) isleaf() bool {
+	return n.l == nullNode && n.r == nullNode
+}
+
 func (n *lrbNode) isRBTree(h, min, max int) bool {
-	if n == nullNode {
+	if n == nullNode || n == nil {
 		return h == 0
 	}
 	if n.c == Black {
@@ -120,11 +133,20 @@ func (n *lrbNode) isRBTree(h, min, max int) bool {
 	if n.p != nil && n == n.p.r && n.c == Red {
 		return false
 	}
+
+	if n.l != nullNode && n.l.p != n {
+		return false
+	}
+
+	if n.r != nullNode && n.r.p != n {
+		return false
+	}
+
 	return n.l.isRBTree(h, min, n.k) && n.r.isRBTree(h, n.k, max)
 }
 
 func (n *lrbNode) height() int {
-	if n == nullNode {
+	if n == nullNode || n == nil {
 		return 0
 	}
 	if n.c == Red {
@@ -154,13 +176,17 @@ func (t *LLRBTree) height() int {
 }
 
 func (t *LLRBTree) fix(n *lrbNode) {
-	if n == nil || n.c == Black {
+	if n == nil {
 		return
 	}
 
 	if n.p == nil {
 		t.root = n
 		n.c = Black
+		return
+	}
+
+	if n.c == Black {
 		return
 	}
 
@@ -187,29 +213,59 @@ func (t *LLRBTree) fix(n *lrbNode) {
 }
 
 func (t *LLRBTree) fixDel(n *lrbNode) {
-	// from null node as left child of a leaf, right sibling must be black
-	// as if right sibling does not exist, then color would be red, we would
-	// not enter this func
-	for n.p != nil {
-		if n == n.p.l {
-			s := n.p.r
-			c := n.p.c
+	if n.p != nil && n.p.l == nullNode && n.p.r == nullNode {
+		n = n.p
+	}
+
+	if n.p != nil {
+		if n == nullNode && n.p.l.isleaf() {
+			n.p.l.c = Red
+			n = n.p
+		}
+
+		if n == nullNode && n.p.r.isleaf() {
+			n = n.p.r
 			n.p.rotate(Left)
-			n = s
-			if c == Red {
-				break
+		}
+	}
+
+	for n.p != nil && n.c == Black {
+		fmt.Println("fix on ", n, " in ", n.p.preorder())
+		p := n.p
+		if n == p.l {
+			s := p.r
+			if s.l.c == Red {
+				s.rotate(Right)
+				s.c = Black
+				s = p.r
+				p.rotate(Left)
+				if s.p == nil {
+					t.root = s
+				}
+				n = s.l
+			} else {
+				p.rotate(Left)
+				n = s
 			}
 		} else {
-			s := n.p.l
-			c := n.p.c
-			n.p.rotate(Right)
-			n = s
+			s := p.l
+			c := s.c
+			p.rotate(Right)
+			p.c = Black
+			n = s.l
+			if s.p == nil {
+				t.root = s
+			}
 			if c == Red {
-				n.c = Black
-				break
+				p.l.c = Red
+				if p.l.l.c == Red {
+					t.fix(p.l)
+				}
+				n = t.root
 			}
 		}
 	}
+
 	n.c = Black
 	if n.p == nil {
 		t.root = n
@@ -254,52 +310,49 @@ func (t *LLRBTree) Delete(k int) {
 		return
 	}
 
+	fmt.Printf("DEL %v %+v\n", k, n)
 	color := n.c
-	succ := n.succ()
-	start := succ.l
+	var succ, start *lrbNode
 	// n can only be a leaf node, or has only left red child
 	if n.r == nullNode {
 		succ = n.l
 		start = n.l
+		if start != nullNode {
+			color = succ.c
+			succ.c = n.c
+		}
 	} else { // or both black child
-		start = nullNode
+		succ = n.succ()
+		start = succ.l // always is null node
+		start.p = succ
 		color = succ.c
 		succ.c = n.c
 		succ.l = n.l
 		n.l.p = succ
-		if succ != n.r { // succ is not n's direct right child
+		if succ != n.r {
 			succ.r = n.r
 			n.r.p = succ
-			if succ.p.l == succ {
-				succ.p.l = nullNode
-			} else {
-				succ.p.r = nullNode
-			}
-			nullNode.p = n.p
+			start.p = succ.p
+			succ.p.l = start // can only be left child
 		}
 	}
 
 	if n.p != nil {
-		if n.p.l == n.r {
+		if n.p.l == n {
 			n.p.l = succ
 		} else {
 			n.p.r = succ
 		}
 	}
-	succ.p = n.p // null node parent also be set here
+	succ.p = n.p
+	if succ.p == nil {
+		t.root = succ
+	}
 	n.p = nil
 	n.l = nil
 	n.r = nil
 
 	if color == Red {
-		return
-	}
-
-	//     n
-	//    //
-	//   x (R)
-	if start != nullNode {
-		start.c = Black
 		return
 	}
 
