@@ -15,7 +15,7 @@ func TestAlgo_LLRBTree(t *testing.T) {
 
 	i := 0
 	keys := []int{}
-	for i < 10 {
+	for i < 100 {
 		keys = append(keys, i)
 		j := rand.Intn(i + 1)
 		keys[i], keys[j] = keys[j], i
@@ -29,7 +29,7 @@ func TestAlgo_LLRBTree(t *testing.T) {
 	}
 
 	fmt.Println(tree.Visit())
-	
+
 	for _, k := range keys {
 		tree.Delete(k)
 		fmt.Println(k, " <- ", tree.Visit())

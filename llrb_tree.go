@@ -88,7 +88,7 @@ func (n *lrbNode) getchild(d Direction) *lrbNode {
 	return n.l
 }
 
-func (n *lrbNode) rotate(dir Direction) {
+func (n *lrbNode) rotate(t *LLRBTree, dir Direction) {
 	child := n.getchild(!dir)
 
 	if child == nullNode {
@@ -116,6 +116,8 @@ func (n *lrbNode) rotate(dir Direction) {
 		} else {
 			child.p.r = child
 		}
+	} else {
+		t.root = child
 	}
 }
 
@@ -192,7 +194,7 @@ func (t *LLRBTree) fix(n *lrbNode) {
 
 	if n == n.p.r {
 		if n.p.l.c == Black {
-			n.p.rotate(Left)
+			n.p.rotate(t, Left)
 			n = n.l
 		} else {
 			n.p.l.c = Black
@@ -202,7 +204,7 @@ func (t *LLRBTree) fix(n *lrbNode) {
 	}
 
 	if n.l.c == Red {
-		n.p.rotate(Right)
+		n.p.rotate(t, Right)
 		n.c = Red
 		n.l.c = Black
 		n.r.c = Black
@@ -225,7 +227,7 @@ func (t *LLRBTree) fixDel(n *lrbNode) {
 
 		if n == nullNode && n.p.r.isleaf() {
 			n = n.p.r
-			n.p.rotate(Left)
+			n.p.rotate(t, Left)
 		}
 	}
 
@@ -235,27 +237,21 @@ func (t *LLRBTree) fixDel(n *lrbNode) {
 		if n == p.l {
 			s := p.r
 			if s.l.c == Red {
-				s.rotate(Right)
+				s.rotate(t, Right)
 				s.c = Black
 				s = p.r
-				p.rotate(Left)
-				if s.p == nil {
-					t.root = s
-				}
+				p.rotate(t, Left)
 				n = s.l
 			} else {
-				p.rotate(Left)
+				p.rotate(t, Left)
 				n = s
 			}
 		} else {
 			s := p.l
 			c := s.c
-			p.rotate(Right)
+			p.rotate(t, Right)
 			p.c = Black
 			n = s.l
-			if s.p == nil {
-				t.root = s
-			}
 			if c == Red {
 				p.l.c = Red
 				if p.l.l.c == Red {
