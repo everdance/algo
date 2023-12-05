@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+// this is an implementation without using null node to teriminate leaf nodes
+// the complication of dealing with edge cases with leaf node are huge
+// compare this to the llb tree implementation
+
 type Color string
 type Direction bool
 

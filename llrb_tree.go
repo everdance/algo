@@ -215,32 +215,28 @@ func (t *LLRBTree) fix(n *lrbNode) {
 }
 
 func (t *LLRBTree) fixDel(n *lrbNode) {
-	if n.p != nil && n.p.l == nullNode && n.p.r == nullNode {
-		n = n.p
-	}
-
-	if n.p != nil {
-		if n == nullNode && n.p.l.isleaf() {
-			n.p.l.c = Red
-			n = n.p
-		}
-
-		if n == nullNode && n.p.r.isleaf() {
-			n = n.p.r
-			n.p.rotate(t, Left)
-		}
-	}
-
 	for n.p != nil && n.c == Black {
 		p := n.p
+
+		if p.l == nullNode && p.r == nullNode {
+			n = p
+			continue
+		}
+
+		if n == nullNode && p.l.isleaf() {
+			p.l.c = Red
+			n = p
+			continue
+		}
+
 		if n == p.l {
 			s := p.r
 			if s.l.c == Red {
 				s.rotate(t, Right)
 				s.c = Black
-				s = p.r
+				s = p.r // s.l is now black
 				p.rotate(t, Left)
-				n = s.l
+				n = s.l // n is now red
 			} else {
 				p.rotate(t, Left)
 				n = s
@@ -253,7 +249,7 @@ func (t *LLRBTree) fixDel(n *lrbNode) {
 			n = s.l
 			if c == Red {
 				p.l.c = Red
-				// fix double left red
+				// fix two left red chain
 				if p.l.l.c == Red {
 					t.fix(p.l)
 				}
