@@ -2,10 +2,6 @@ package algo
 
 import "math"
 
-const (
-	defaultpadkey = math.MaxInt
-)
-
 // keys slice has same length as childs for internal nodes
 // but last entry is always set to default pad key
 type btrnode struct {
@@ -41,7 +37,7 @@ func (n *btrnode) valid(level, order, min, max int, root bool) bool {
 		if !root && (clen > order || clen < order/2) {
 			return false
 		}
-		if klen != clen-1 || n.keys[klen-1] != defaultpadkey {
+		if klen != clen-1 {
 			return false
 		}
 	}
@@ -128,6 +124,7 @@ func (n *btrnode) fixInsert(order int) *btrnode {
 	if len(n.keys) > order {
 		splitted := &btrnode{
 			parent: n.parent,
+			leaf:   n.leaf,
 			keys:   n.keys[index+1:],
 		}
 		if !n.leaf {
@@ -148,7 +145,9 @@ func (n *btrnode) remove(key int) *btrnode {
 	rkeys, rchilds := []int{}, []*btrnode{}
 	if i < len(n.keys)-1 {
 		rkeys = n.keys[i+1:]
-		rchilds = n.childs[i+1:]
+		if !n.leaf {
+			rchilds = n.childs[i+1:]
+		}
 	}
 	n.keys = append(n.keys[:i], rkeys...)
 	if !n.leaf {
@@ -158,13 +157,71 @@ func (n *btrnode) remove(key int) *btrnode {
 	return n
 }
 
+func (n *btrnode) delete(key, order int) *btrnode {
+	n.remove(key)
+
+	l := len(n.keys)
+	if n.leaf && l > 0 || l >= order/2 {
+		return n
+	}
+
+	p := n.parent
+	if p == nil {
+		if l == 0 {
+			n = n.childs[0]
+			n.parent = nil
+		}
+		return n
+	}
+
+	ni := p.index(n.keys[0])
+	si := ni + 1 // right sibling index
+	if si > len(p.keys) {
+		si = ni - 1 // left sibling index
+	}
+	s := p.childs[si]
+	to, from, key := n, s, p.keys[ni]
+	if si < ni {
+		to, from, key = s, n, p.keys[si]
+	}
+
+	if len(s.keys) > order/2 { // borrow a child
+		if si > ni {
+			n.keys = append(n.keys, key)
+			n.childs = append(n.childs, s.childs[0])
+			s.childs[0].parent = n
+			p.keys[ni] = s.keys[0]
+			s.keys = s.keys[1:]
+			s.childs = s.childs[1:]
+		} else {
+			n.keys = append([]int{key}, n.keys...)
+			child := s.childs[len(s.childs)-1]
+			n.childs = append([]*btrnode{child}, n.childs...)
+			child.parent = n
+			p.keys[si] = s.keys[len(s.keys)-1]
+			s.keys = s.keys[:len(s.keys)-1]
+			s.childs = s.childs[:len(s.childs)-1]
+		}
+		return n
+	}
+	// merge with sibiling
+	to.keys = append(to.keys, key)
+	to.keys = append(to.keys, from.keys...)
+	to.childs = append(to.childs, from.childs...)
+	from.parent = nil
+	from.keys = nil
+	from.childs = nil
+
+	return p.delete(key, order)
+}
+
 type Btree struct {
-	Order int
+	order int
 	root  *btrnode
 }
 
 func BTree(order int) *Btree {
-	return &Btree{Order: order}
+	return &Btree{order: order}
 }
 
 func (t *Btree) check() bool {
@@ -172,7 +229,7 @@ func (t *Btree) check() bool {
 		return true
 	}
 	level := t.root.level()
-	return t.root.valid(level, t.Order, math.MinInt, math.MaxInt, true)
+	return t.root.valid(level, t.order, math.MinInt, math.MaxInt, true)
 }
 
 func (t *Btree) Find(key int) bool {
@@ -206,8 +263,27 @@ func (t *Btree) Insert(key int) {
 	}
 
 	n.insert(key, nil)
-	top := n.fixInsert(t.Order)
+	top := n.fixInsert(t.order)
 	if top.parent == nil {
 		t.root = top
+	}
+}
+
+func (t *Btree) Delete(key int) {
+	if t.root == nil {
+		return
+	}
+
+	n := t.root
+	for !n.leaf {
+		n = n.childs[n.index(key)]
+	}
+
+	i := n.index(key)
+	if n.keys[i] == key {
+		top := n.delete(key, t.order)
+		if top.parent == nil {
+			t.root = top
+		}
 	}
 }
