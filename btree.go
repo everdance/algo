@@ -43,33 +43,27 @@ func (n *btrnode) level() int {
 func (n *btrnode) valid(level, order, min, max int, root bool) bool {
 	klen, clen := len(n.keys), len(n.childs)
 	if n.leaf && (klen > order || clen != 0 || level != 1) {
-		fmt.Println("leaf key and child len range, level", n)
 		return false
 	}
 
 	if !n.leaf {
 		if root && (clen < 2 || clen > order) {
-			fmt.Println("root child len range", n)
 			return false
 		}
 		// internal non root node has at least U[order/2] children
 		if !root && (clen > order || clen < order/2) {
-			fmt.Println("child len range", n)
 			return false
 		}
 		if klen != clen-1 {
-			fmt.Println("key child len", n)
 			return false
 		}
 	}
 
 	for i := 0; i < klen; i++ {
 		if i < klen-1 && n.keys[i] > n.keys[i+1] {
-			fmt.Println("key order invalid", n.keys)
 			return false
 		}
 		if n.keys[i] > max || n.keys[i] <= min {
-			fmt.Println("key range invalid, ", max, min, n)
 			return false
 		}
 	}
@@ -102,6 +96,10 @@ func (n *btrnode) index(key int) int {
 }
 
 func (n *btrnode) search(key int) *btrnode {
+	if n == nil {
+		return nil
+	}
+
 	index := n.index(key)
 	if n.leaf {
 		if index < len(n.keys) && n.keys[index] == key {
@@ -136,23 +134,32 @@ func (n *btrnode) insert(key int, child *btrnode) *btrnode {
 	return n
 }
 
+func (n *btrnode) childsCnt() int {
+	if n.leaf {
+		return len(n.keys)
+	}
+	return len(n.childs)
+}
+
 func (n *btrnode) fixInsert(order int) *btrnode {
 	index := len(n.keys) / 2
-	if len(n.keys) > order {
+	if n.childsCnt() > order {
 		splitted := &btrnode{
 			parent: n.parent,
 			leaf:   n.leaf,
 			keys:   append([]int{}, n.keys[index+1:]...),
 		}
+		k := n.keys[index]
+		n.keys = n.keys[:index]
 		if !n.leaf {
-			splitted.childs = append([]*btrnode{}, n.childs[index:]...)
+			splitted.childs = append([]*btrnode{}, n.childs[index+1:]...)
 			for _, c := range splitted.childs {
 				c.parent = splitted
 			}
-			n.childs = n.childs[:index]
+			n.childs = n.childs[:index+1]
+		} else { // keep the key on leaf node
+			n.keys = append(n.keys, k)
 		}
-		k := n.keys[index]
-		n.keys = n.keys[:index+1]
 		// create new root
 		if n.parent == nil {
 			n.parent = &btrnode{childs: []*btrnode{n, splitted}, keys: []int{k}}
@@ -183,10 +190,17 @@ func (n *btrnode) remove(key int) *btrnode {
 	return n
 }
 
+func (n *btrnode) keyMax() int {
+	for !n.leaf {
+		n = n.childs[len(n.childs)-1]
+	}
+	return n.keys[len(n.keys)-1]
+}
+
 func (n *btrnode) delete(key, order int) *btrnode {
 	n.remove(key)
 
-	l := len(n.keys)
+	l := n.childsCnt()
 	if l >= order/2 {
 		return n
 	}
@@ -195,6 +209,10 @@ func (n *btrnode) delete(key, order int) *btrnode {
 	if p == nil {
 		if l == 0 {
 			return nil
+		} else if l == 1 && !n.leaf {
+			child := n.childs[0]
+			child.parent = nil
+			return child
 		}
 		return n
 	}
@@ -208,36 +226,54 @@ func (n *btrnode) delete(key, order int) *btrnode {
 
 	if len(s.keys) > order/2 { // borrow from sibling
 		if si > ni {
+			pkey := p.keys[ni]
 			n.keys = append(n.keys, s.keys[0])
 			p.keys[ni] = s.keys[0]
 			s.keys = s.keys[1:]
 			if !n.leaf {
+				klen := len(n.keys)
+				n.keys[klen-1] = pkey
+				if klen > 2 && n.keys[klen-2] == pkey { // deduplicate key
+					n.keys[klen-1] = n.childs[klen-1].keyMax()
+				}
 				n.childs = append(n.childs, s.childs[0])
 				s.childs[0].parent = n
 				s.childs = s.childs[1:]
 			}
 		} else {
 			sklen := len(s.keys)
-			n.keys = append([]int{s.keys[sklen-1]}, n.keys...)
-			s.keys = s.keys[:len(s.keys)-1]
-			p.keys[si] = s.keys[sklen-2]
 			if !n.leaf {
 				child := s.childs[len(s.childs)-1]
+				n.keys = append([]int{child.keyMax()}, n.keys...)
 				n.childs = append([]*btrnode{child}, n.childs...)
 				child.parent = n
 				s.childs = s.childs[:len(s.childs)-1]
+			} else {
+				n.keys = append([]int{s.keys[sklen-1]}, n.keys...)
 			}
+			s.keys = s.keys[:sklen-1]
+			p.keys[si] = s.keyMax()
 		}
 		return n
 	}
 
-	to, from, key := n, s, p.keys[ni]
+	// merge with sibiling
+	to, from := n, s
 	if si < ni {
 		to, from, key = s, n, p.keys[si]
+	} else {
+		key = p.keys[ni]
 	}
-	// merge with sibiling
+	// add the to be deleted key from parent to make childs/keys
+	// number match
+	if !to.leaf {
+		to.keys = append(to.keys, to.keyMax())
+		for _, child := range from.childs {
+			child.parent = to
+			to.childs = append(to.childs, child)
+		}
+	}
 	to.keys = append(to.keys, from.keys...)
-	to.childs = append(to.childs, from.childs...)
 	from.parent = nil
 	from.keys = nil
 	from.childs = nil
