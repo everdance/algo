@@ -16,6 +16,10 @@ type trieNode struct {
 }
 
 func (n *trieNode) print() {
+	if n == nil {
+		return
+	}
+
 	for i, c := range n.next {
 		if c != nil {
 			fmt.Printf("%c[%v] ", i, c.isString)
@@ -121,7 +125,7 @@ func (s *TrieSet) Del(key string) error {
 		return err
 	}
 
-	s.root.remove(bs, 0)
+	s.root = s.root.remove(bs, 0)
 	return nil
 }
 

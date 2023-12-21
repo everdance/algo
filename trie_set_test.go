@@ -19,4 +19,11 @@ func TestAlgo_TrieSet(t *testing.T) {
 	assert.NilError(t, set.Put("million"))
 	strs := set.KeysWithPrefix("mi")
 	assert.DeepEqual(t, strs, []string{"mill", "million"})
+	assert.NilError(t, set.Del("hello"))
+	assert.Assert(t, !set.Contains("hello"))
+	assert.NilError(t, set.Del("mill"))
+	assert.NilError(t, set.Del("bbc"))
+	assert.NilError(t, set.Del("million"))
+	set.Print()
+	assert.Assert(t, set.IsEmpty())	
 }
