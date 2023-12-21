@@ -9,6 +9,7 @@ algorithms playground
 - [x] 2/3 BST
 - [x] LLRB BST
 - [x] AVL BST
-- [ ] B+ tree
-- [ ] Concurrent RB BST
-- [ ] Concurrent B+ tree
+- [x] B tree
+- [x] TRIE SET
+- [ ] 3 Way QuickSort
+- [ ] KMP
