@@ -11,5 +11,5 @@ algorithms playground
 - [x] AVL BST
 - [x] B tree
 - [x] TRIE SET
-- [ ] 3 Way QuickSort
-- [ ] KMP
+- [x] 3 Way QuickSort
+- [x] KMP

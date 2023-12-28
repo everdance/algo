@@ -24,6 +24,5 @@ func TestAlgo_TrieSet(t *testing.T) {
 	assert.NilError(t, set.Del("mill"))
 	assert.NilError(t, set.Del("bbc"))
 	assert.NilError(t, set.Del("million"))
-	set.Print()
-	assert.Assert(t, set.IsEmpty())	
+	assert.Assert(t, set.IsEmpty())
 }
