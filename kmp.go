@@ -4,15 +4,15 @@ package algo
 func bktrack(pat []rune) []int {
 	bkt := make([]int, len(pat))
 	bkt[0] = 0
-	l, i := 0, 1
+	m, i := 0, 1 // m -> longest prefix/suffix match len for pat[:i+1]
 	for i < len(pat) {
-		if pat[i] == pat[l] {
-			l++
-			bkt[i] = l
+		if pat[i] == pat[m] {
+			m++
+			bkt[i] = m
 			i++
 		} else {
-			if l > 0 {
-				l = bkt[l-1]
+			if m > 0 {
+				m = bkt[m-1] // step back to previous longest match len
 			} else {
 				bkt[i] = 0
 				i++
